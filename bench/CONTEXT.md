@@ -1,9 +1,6 @@
 # Bench
 
-<!--
-last_reviewed: 2026-03-27
-review_cadence: quarterly
--->
+last_reviewed: 2026-03-27 | review_cadence: quarterly
 
 ## What This Workspace Is
 
@@ -15,6 +12,17 @@ This is **downstream** of lab, **upstream** of deploy:
 - Reads frozen configs from lab/output/ (never edits lab code)
 - Reads `_config/period-config.md` to find the current holdout window
 - Approved strategies flow to deploy/ for C++ generation
+
+---
+
+## Hard Rules
+
+1. **Holdout is one shot per window.** Never re-run the same window
+   with different params. The flag file locks it per window.
+2. **Audit log is append-only.** Never delete or modify entries.
+3. **Verdicts are deterministic.** Same inputs → same output. No
+   subjective adjustments.
+4. **Never edit lab code from bench.** Read frozen outputs only.
 
 ---
 
@@ -117,13 +125,6 @@ and `bench/output/[arch]-[inst]-verdict-[window]-validated.json` to
 
 ## Skills & Tools for This Workspace
 
-<!--
-Skills activate at specific points in the validation workflow.
-  - STAGE TRIGGER: runs during a specific validation task
-  - ALWAYS-ON: applies to everything in this workspace
-  - ON-DEMAND: available when the user asks
--->
-
 | Skill / Tool | Activation | When | Purpose |
 |-------------|-----------|------|---------|
 | `docs/statistical-gates.md` | ALWAYS-ON | Every validation task | Internalize pass/fail thresholds as constraints |
@@ -138,14 +139,3 @@ Skills activate at specific points in the validation workflow.
 - **Kelly calculator** — position sizing + ruin probability computation
 - **Prop firm evaluator** — simulate drawdown/profit rules for specific firms
 - **Regime comparison** — compare calibration vs holdout regime distributions
-
----
-
-## Hard Rules
-
-1. **Holdout is one shot per window.** Never re-run the same window
-   with different params. The flag file locks it per window.
-2. **Audit log is append-only.** Never delete or modify entries.
-3. **Verdicts are deterministic.** Same inputs → same output. No
-   subjective adjustments.
-4. **Never edit lab code from bench.** Read frozen outputs only.

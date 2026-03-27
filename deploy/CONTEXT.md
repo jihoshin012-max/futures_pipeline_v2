@@ -1,9 +1,6 @@
 # Deploy
 
-<!--
-last_reviewed: 2026-03-27
-review_cadence: quarterly
--->
+last_reviewed: 2026-03-27 | review_cadence: quarterly
 
 ## What This Workspace Is
 
@@ -15,6 +12,16 @@ workspace:
 - Reads verified build + verdict from bench/output/
 - Never reads lab code or bench internals
 - No code changes happen here — observation only
+
+---
+
+## Hard Rules
+
+1. **Human compiles, replays, creates flag.** Agent never creates
+   `deployment-ready` flags.
+2. **No code changes in this workspace.** Observation only.
+3. **Never edit lab or bench files from deploy.**
+4. **Verdict must be PASS.** Do not deploy a FAIL verdict.
 
 ---
 
@@ -55,10 +62,6 @@ deploy/
 ---
 
 ## Skills & Tools for This Workspace
-
-<!--
-Deploy is the leanest workspace — observation only, no iteration.
--->
 
 | Skill / Tool | Activation | When | Purpose |
 |-------------|-----------|------|---------|
@@ -104,13 +107,3 @@ expansion beyond baseline tolerance):
 1. Flag in `audit/audit_log.md`
 2. Write drift report with evidence
 3. Human decides: continue, pause, or kill
-
----
-
-## Hard Rules
-
-1. **Human compiles, replays, creates flag.** Agent never creates
-   `deployment-ready` flags.
-2. **No code changes in this workspace.** Observation only.
-3. **Never edit lab or bench files from deploy.**
-4. **Verdict must be PASS.** Do not deploy a FAIL verdict.

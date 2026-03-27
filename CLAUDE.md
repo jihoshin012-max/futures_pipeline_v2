@@ -1,30 +1,6 @@
 # Futures Pipeline — Workspace Map
 
-<!--
-last_reviewed: 2026-03-27
-review_cadence: quarterly
-
-====================================================================
-This is LAYER 0 — THE MAP.
-
-CLAUDE.md is auto-loaded into every conversation. It's always in
-context. That makes it prime real estate. Use it for:
-
-1. Folder structure (so the agent always knows where things live)
-2. ID systems & naming conventions (so files land in the right place)
-3. File placement rules (so nothing gets lost)
-4. Quick navigation table (task → workspace)
-
-Do NOT put:
-  - Experiment instructions (those go in workspace CONTEXT.md files)
-  - Simulation rules (those go in lab/docs/)
-  - Pipeline stage details (those go in lab/workflows/CONTEXT.md)
-  - Statistical gates (those go in bench/docs/)
-
-Keep it under 200 lines. Every line here costs tokens in EVERY
-conversation.
-====================================================================
--->
+last_reviewed: 2026-03-27 | review_cadence: quarterly
 
 ## What This Is
 
@@ -38,84 +14,6 @@ This file is the map.
 
 ---
 
-## Folder Structure
-
-```
-pipeline/
-├── CLAUDE.md                              ← You are here (always loaded)
-├── CONTEXT.md                             ← Task router
-│
-├── lab/                                   ← Run experiments, build strategies
-│   ├── CONTEXT.md
-│   ├── docs/                              ← Simulation rules, feature rules
-│   ├── output/                            ← Results, findings, frozen configs
-│   └── workflows/                         ← Experiment pipeline (3 stages)
-│       ├── CONTEXT.md
-│       ├── 01-features/
-│       ├── 02-hypotheses/
-│       └── 03-params/
-│
-├── bench/                                 ← Validate and judge strategies
-│   ├── CONTEXT.md
-│   ├── docs/                              ← Statistical gates
-│   └── output/                            ← Holdout trade logs, stress tests, verdicts
-│
-├── deploy/                                ← Monitor live strategies
-│   ├── CONTEXT.md
-│   └── output/                            ← Verified builds, paper trades, drift
-│
-├── _config/                               ← Shared constants (read by all)
-│   ├── instruments.md                        Tick size, tick value, sessions, costs
-│   └── period-config.md                      Rolling windows + role assignments
-│
-├── harness/                               ← Fixed engines (never edit)
-├── data/                                  ← Source bar/touch data
-├── scoring/                               ← Scoring adapters + models
-├── audit/                                 ← Append-only experiment log
-└── tests/
-```
-
----
-
-## Quick Navigation
-
-| Want to... | Go here |
-|------------|---------|
-| **Run experiments** | `lab/CONTEXT.md` |
-| **Look up simulation rules** | `lab/docs/simulation-rules.md` |
-| **Understand the experiment pipeline** | `lab/workflows/CONTEXT.md` |
-| **Run holdout validation** | `bench/CONTEXT.md` |
-| **Stress test a strategy** | `bench/CONTEXT.md` |
-| **Read statistical gates** | `bench/docs/statistical-gates.md` |
-| **Generate deployment C++** | `deploy/CONTEXT.md` |
-| **Check live performance** | `deploy/CONTEXT.md` |
-| **Look up instrument constants** | `_config/instruments.md` |
-| **Check period windows and roles** | `_config/period-config.md` |
-| **Review experiment history** | `audit/audit_log.md` |
-
----
-
-## Cross-Workspace Flow
-
-```
-lab (Python + C++ experiments → frozen params + verified study)
-    ↓ frozen configs + verified .cpp copy to bench/output/
-bench (validate holdout → stress test → verdict)
-    ↓ approved build copies to deploy/output/
-deploy (live monitoring only)
-```
-
-lab never needs to know about deployment details.
-deploy never needs to know about experiment pipelines.
-bench reads frozen outputs from lab but never edits lab code.
-
-**Handoff protocol:** When files cross workspace boundaries, copy
-them to the destination workspace's output/ folder. The source
-file stays in place. Each workspace reads only from its own
-output/ or from _config/.
-
----
-
 ## File Discipline
 
 Files belong in the workspace where they're used:
@@ -125,6 +23,12 @@ Files belong in the workspace where they're used:
 
 If you're about to create a file in a workspace that doesn't
 match the file placement rules, stop and check this file.
+
+**Before creating any file:**
+1. Filename matches `[arch]-[instrument]-[type]-[status].[ext]`
+2. Type exists in the type catalog below
+3. File lands in the correct workspace per placement rules below
+4. If type is NOT in the catalog, flag it before creating
 
 **Before finishing a session:** If you created a new file type,
 added a skill, or changed a workflow:
@@ -144,13 +48,6 @@ These rules are enforced by git pre-commit hook:
 ---
 
 ## ID & Naming Conventions
-
-<!--
-Naming conventions belong in CLAUDE.md because they apply EVERYWHERE.
-Any agent creating a file needs these rules, regardless of which
-workspace it's in. The naming pattern IS the organization — no
-separate folders needed per archetype or instrument.
--->
 
 ### File Name Pattern
 
@@ -193,13 +90,6 @@ separate folders needed per archetype or instrument.
 
 **Statuses:** `draft` → `frozen` → `validated` → `deployed`
 
-### Before creating any file
-
-1. Filename matches `[arch]-[instrument]-[type]-[status].[ext]`
-2. Type exists in the catalog above
-3. File lands in the correct workspace per placement rules below
-4. If type is NOT in the catalog, flag it before creating
-
 ### Adding a new archetype or instrument
 
 No folders to create. Register in `_config/instruments.md`, start
@@ -237,3 +127,77 @@ evaluator as starting point, adapt to new strategy mechanics.
 - **C++ builds:** `deploy/output/[arch]-[inst]-build-v[n]-deployed.cpp`
 - **Paper trades:** `deploy/output/[arch]-[inst]-paper-trades.csv`
 - **Drift reports:** `deploy/output/[arch]-[inst]-drift-[YYYY-MM].md`
+
+---
+
+## Folder Structure
+
+```
+pipeline/
+├── CLAUDE.md                              ← You are here (always loaded)
+├── CONTEXT.md                             ← Task router
+│
+├── lab/                                   ← Run experiments, build strategies
+│   ├── CONTEXT.md
+│   ├── docs/                              ← Simulation rules, feature rules
+│   ├── output/                            ← Results, findings, frozen configs
+│   └── workflows/                         ← Experiment pipeline (3 stages + verify)
+│
+├── bench/                                 ← Validate and judge strategies
+│   ├── CONTEXT.md
+│   ├── docs/                              ← Statistical gates
+│   └── output/                            ← Holdout trade logs, stress tests, verdicts
+│
+├── deploy/                                ← Monitor live strategies
+│   ├── CONTEXT.md
+│   ├── docs/                              ← Monitoring triggers
+│   └── output/                            ← Verified builds, paper trades, drift
+│
+├── _config/                               ← Shared constants (read by all)
+│   ├── instruments.md                        Tick size, tick value, sessions, costs
+│   └── period-config.md                      Rolling windows + role assignments
+│
+├── harness/                               ← Shared engines (emerge from use, then fixed)
+├── data/                                  ← Source bar/touch data
+├── scoring/                               ← Scoring adapters + models
+├── audit/                                 ← Append-only experiment log
+└── tests/
+```
+
+---
+
+## Quick Navigation
+
+| Want to... | Go here |
+|------------|---------|
+| **Run experiments** | `lab/CONTEXT.md` |
+| **Look up simulation rules** | `lab/docs/simulation-rules.md` |
+| **Understand the experiment pipeline** | `lab/workflows/CONTEXT.md` |
+| **Run holdout validation** | `bench/CONTEXT.md` |
+| **Stress test a strategy** | `bench/CONTEXT.md` |
+| **Read statistical gates** | `bench/docs/statistical-gates.md` |
+| **Monitor live performance** | `deploy/CONTEXT.md` |
+| **Look up instrument constants** | `_config/instruments.md` |
+| **Check period windows and roles** | `_config/period-config.md` |
+| **Review experiment history** | `audit/audit_log.md` |
+
+---
+
+## Cross-Workspace Flow
+
+```
+lab (Python + C++ experiments → frozen params + verified study)
+    ↓ frozen configs + verified .cpp copy to bench/output/
+bench (validate holdout → stress test → verdict)
+    ↓ approved build copies to deploy/output/
+deploy (live monitoring only)
+```
+
+lab never needs to know about deployment details.
+deploy never needs to know about experiment pipelines.
+bench reads frozen outputs from lab but never edits lab code.
+
+**Handoff protocol:** When files cross workspace boundaries, copy
+them to the destination workspace's output/ folder. The source
+file stays in place. Each workspace reads only from its own
+output/ or from _config/.

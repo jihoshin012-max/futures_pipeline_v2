@@ -1,0 +1,627 @@
+{
+  "metadata": {
+    "date_range": "2025-09-21 to 2026-03-13",
+    "data_source": "NQ_BarData_1tick_rot",
+    "total_rows": 60911516,
+    "created": "2026-03-20"
+  },
+  "fact1_self_similarity": {
+    "thresholds": [
+      3,
+      5,
+      7,
+      10,
+      15,
+      25,
+      50
+    ],
+    "rth": {
+      "mean_over_threshold": [
+        6.3,
+        10.3,
+        14.2,
+        20.1,
+        29.9,
+        49.4,
+        97.1
+      ],
+      "median_over_threshold": [
+        5.2,
+        8.8,
+        12.0,
+        17.0,
+        25.5,
+        42.0,
+        83.5
+      ],
+      "p90_over_threshold": [
+        10.8,
+        17.2,
+        23.5,
+        33.0,
+        49.5,
+        80.8,
+        156.6
+      ],
+      "skewness": [
+        1.93,
+        1.89,
+        1.92,
+        1.89,
+        1.97,
+        1.9,
+        1.89
+      ],
+      "median_p90_ratio": [
+        0.49,
+        0.51,
+        0.51,
+        0.52,
+        0.52,
+        0.52,
+        0.53
+      ]
+    },
+    "eth": {
+      "mean_over_threshold": [
+        6.6,
+        10.5,
+        14.3,
+        20.2,
+        29.9,
+        48.2,
+        97.0
+      ],
+      "median_over_threshold": [
+        5.5,
+        8.8,
+        12.0,
+        17.2,
+        25.5,
+        41.0,
+        80.8
+      ],
+      "p90_over_threshold": [
+        11.5,
+        17.8,
+        24.0,
+        33.2,
+        48.8,
+        78.2,
+        159.5
+      ],
+      "skewness": [
+        2.36,
+        2.09,
+        2.04,
+        1.98,
+        2.22,
+        2.08,
+        1.87
+      ],
+      "median_p90_ratio": [
+        0.48,
+        0.49,
+        0.5,
+        0.52,
+        0.52,
+        0.52,
+        0.51
+      ]
+    },
+    "combined": {
+      "mean_over_threshold": [
+        6.4,
+        10.3,
+        14.2,
+        20.1,
+        30.0,
+        49.2,
+        98.0
+      ],
+      "median_over_threshold": [
+        5.2,
+        8.8,
+        12.0,
+        17.0,
+        25.5,
+        41.8,
+        83.5
+      ],
+      "p90_over_threshold": [
+        11.0,
+        17.5,
+        23.8,
+        33.2,
+        49.2,
+        80.2,
+        159.9
+      ],
+      "skewness": [
+        2.12,
+        1.98,
+        1.97,
+        1.93,
+        2.06,
+        1.95,
+        1.89
+      ],
+      "median_p90_ratio": [
+        0.48,
+        0.5,
+        0.51,
+        0.51,
+        0.52,
+        0.52,
+        0.52
+      ]
+    }
+  },
+  "fact2_completion_degradation": {
+    "rth": {
+      "50_25": {
+        "retracement_0": 100.0,
+        "retracement_1": 76.47,
+        "retracement_2": 55.95,
+        "retracement_3": 48.26,
+        "retracement_4": 50.35,
+        "retracement_5+": 51.66,
+        "sample_counts": [
+          950,
+          629,
+          370,
+          230,
+          143,
+          211
+        ]
+      },
+      "25_15": {
+        "retracement_0": 100.0,
+        "retracement_1": 68.43,
+        "retracement_2": 55.02,
+        "retracement_3": 43.11,
+        "retracement_4": 41.0,
+        "retracement_5+": 35.97,
+        "sample_counts": [
+          5351,
+          2363,
+          1214,
+          689,
+          300,
+          303
+        ]
+      },
+      "25_10": {
+        "retracement_0": 100.0,
+        "retracement_1": 79.68,
+        "retracement_2": 64.06,
+        "retracement_3": 56.04,
+        "retracement_4": 50.69,
+        "retracement_5+": 45.16,
+        "sample_counts": [
+          2346,
+          2170,
+          1686,
+          1192,
+          872,
+          2004
+        ]
+      },
+      "15_7": {
+        "retracement_0": 100.0,
+        "retracement_1": 76.75,
+        "retracement_2": 58.1,
+        "retracement_3": 49.61,
+        "retracement_4": 47.81,
+        "retracement_5+": 43.56,
+        "sample_counts": [
+          9651,
+          6625,
+          4578,
+          2951,
+          1803,
+          2904
+        ]
+      },
+      "10_5": {
+        "retracement_0": 100.0,
+        "retracement_1": 73.51,
+        "retracement_2": 54.79,
+        "retracement_3": 47.64,
+        "retracement_4": 43.46,
+        "retracement_5+": 41.5,
+        "sample_counts": [
+          25453,
+          15693,
+          9365,
+          5640,
+          3152,
+          4282
+        ]
+      },
+      "7_3": {
+        "retracement_0": 100.0,
+        "retracement_1": 75.82,
+        "retracement_2": 58.85,
+        "retracement_3": 49.12,
+        "retracement_4": 46.25,
+        "retracement_5+": 43.81,
+        "sample_counts": [
+          41128,
+          30146,
+          20857,
+          13583,
+          8629,
+          14087
+        ]
+      }
+    },
+    "eth": {
+      "50_25": {
+        "retracement_0": 100.0,
+        "retracement_1": 78.59,
+        "retracement_2": 59.59,
+        "retracement_3": 44.54,
+        "retracement_4": 39.24,
+        "retracement_5+": 36.04,
+        "sample_counts": [
+          455,
+          341,
+          193,
+          119,
+          79,
+          111
+        ]
+      },
+      "25_15": {
+        "retracement_0": 100.0,
+        "retracement_1": 71.41,
+        "retracement_2": 52.55,
+        "retracement_3": 50.29,
+        "retracement_4": 38.41,
+        "retracement_5+": 43.56,
+        "sample_counts": [
+          3021,
+          1280,
+          607,
+          346,
+          164,
+          163
+        ]
+      },
+      "25_10": {
+        "retracement_0": 100.0,
+        "retracement_1": 81.96,
+        "retracement_2": 66.43,
+        "retracement_3": 56.04,
+        "retracement_4": 53.66,
+        "retracement_5+": 46.37,
+        "sample_counts": [
+          1370,
+          1214,
+          846,
+          646,
+          423,
+          1048
+        ]
+      },
+      "15_7": {
+        "retracement_0": 100.0,
+        "retracement_1": 77.41,
+        "retracement_2": 57.05,
+        "retracement_3": 50.71,
+        "retracement_4": 45.61,
+        "retracement_5+": 45.69,
+        "sample_counts": [
+          5501,
+          3759,
+          2417,
+          1473,
+          980,
+          1405
+        ]
+      },
+      "10_5": {
+        "retracement_0": 100.0,
+        "retracement_1": 72.79,
+        "retracement_2": 55.8,
+        "retracement_3": 48.01,
+        "retracement_4": 43.02,
+        "retracement_5+": 41.8,
+        "sample_counts": [
+          14275,
+          8344,
+          4961,
+          2816,
+          1634,
+          1885
+        ]
+      },
+      "7_3": {
+        "retracement_0": 100.0,
+        "retracement_1": 73.33,
+        "retracement_2": 56.53,
+        "retracement_3": 47.32,
+        "retracement_4": 44.34,
+        "retracement_5+": 44.5,
+        "sample_counts": [
+          24340,
+          16189,
+          10740,
+          6545,
+          3992,
+          5638
+        ]
+      }
+    },
+    "combined": {
+      "50_25": {
+        "retracement_0": 100.0,
+        "retracement_1": 77.21,
+        "retracement_2": 56.63,
+        "retracement_3": 46.69,
+        "retracement_4": 46.58,
+        "retracement_5+": 45.38,
+        "sample_counts": [
+          1403,
+          974,
+          588,
+          362,
+          234,
+          357
+        ]
+      },
+      "25_15": {
+        "retracement_0": 100.0,
+        "retracement_1": 69.58,
+        "retracement_2": 53.71,
+        "retracement_3": 46.04,
+        "retracement_4": 40.08,
+        "retracement_5+": 38.59,
+        "sample_counts": [
+          8505,
+          3724,
+          1873,
+          1060,
+          474,
+          482
+        ]
+      },
+      "25_10": {
+        "retracement_0": 100.0,
+        "retracement_1": 80.43,
+        "retracement_2": 64.65,
+        "retracement_3": 55.77,
+        "retracement_4": 51.66,
+        "retracement_5+": 45.55,
+        "sample_counts": [
+          3771,
+          3450,
+          2577,
+          1879,
+          1328,
+          3122
+        ]
+      },
+      "15_7": {
+        "retracement_0": 100.0,
+        "retracement_1": 76.99,
+        "retracement_2": 57.64,
+        "retracement_3": 50.09,
+        "retracement_4": 46.8,
+        "retracement_5+": 44.23,
+        "sample_counts": [
+          15405,
+          10545,
+          7124,
+          4502,
+          2831,
+          4400
+        ]
+      },
+      "10_5": {
+        "retracement_0": 100.0,
+        "retracement_1": 73.23,
+        "retracement_2": 55.13,
+        "retracement_3": 47.74,
+        "retracement_4": 43.39,
+        "retracement_5+": 41.61,
+        "sample_counts": [
+          40422,
+          24401,
+          14565,
+          8573,
+          4858,
+          6273
+        ]
+      },
+      "7_3": {
+        "retracement_0": 100.0,
+        "retracement_1": 74.88,
+        "retracement_2": 58.02,
+        "retracement_3": 48.55,
+        "retracement_4": 45.66,
+        "retracement_5+": 43.96,
+        "sample_counts": [
+          66635,
+          47112,
+          32041,
+          20429,
+          12790,
+          20000
+        ]
+      }
+    }
+  },
+  "fact3_parent_child_ratio": {
+    "rth": {
+      "pairs": [
+        "50->25",
+        "25->15",
+        "25->10",
+        "15->7",
+        "10->5",
+        "7->3"
+      ],
+      "ratios": [
+        2.0,
+        1.67,
+        2.5,
+        2.14,
+        2.0,
+        2.33
+      ],
+      "completion_at_1_retrace": [
+        76.47,
+        68.43,
+        79.68,
+        76.75,
+        73.51,
+        75.82
+      ]
+    },
+    "eth": {
+      "pairs": [
+        "50->25",
+        "25->15",
+        "25->10",
+        "15->7",
+        "10->5",
+        "7->3"
+      ],
+      "ratios": [
+        2.0,
+        1.67,
+        2.5,
+        2.14,
+        2.0,
+        2.33
+      ],
+      "completion_at_1_retrace": [
+        78.59,
+        71.41,
+        81.96,
+        77.41,
+        72.79,
+        73.33
+      ]
+    },
+    "combined": {
+      "pairs": [
+        "50->25",
+        "25->15",
+        "25->10",
+        "15->7",
+        "10->5",
+        "7->3"
+      ],
+      "ratios": [
+        2.0,
+        1.67,
+        2.5,
+        2.14,
+        2.0,
+        2.33
+      ],
+      "completion_at_1_retrace": [
+        77.21,
+        69.58,
+        80.43,
+        76.99,
+        73.23,
+        74.88
+      ]
+    }
+  },
+  "fact4_waste": {
+    "rth": {
+      "pairs": [
+        "50->25",
+        "25->15",
+        "25->10",
+        "15->7",
+        "10->5",
+        "7->3"
+      ],
+      "waste_pct": [
+        42.04,
+        0.0,
+        51.69,
+        44.09,
+        38.89,
+        43.75
+      ]
+    },
+    "eth": {
+      "pairs": [
+        "50->25",
+        "25->15",
+        "25->10",
+        "15->7",
+        "10->5",
+        "7->3"
+      ],
+      "waste_pct": [
+        44.07,
+        0.0,
+        49.81,
+        42.92,
+        36.67,
+        40.0
+      ]
+    },
+    "combined": {
+      "pairs": [
+        "50->25",
+        "25->15",
+        "25->10",
+        "15->7",
+        "10->5",
+        "7->3"
+      ],
+      "waste_pct": [
+        43.33,
+        0.0,
+        51.07,
+        43.64,
+        38.1,
+        42.5
+      ]
+    }
+  },
+  "fact5_time_stability": {
+    "rth_completion_1retrace_spread_pp": {
+      "parent_15": 7.4,
+      "parent_25": 11.9,
+      "parent_50": 20.3
+    }
+  },
+  "fact6_halfblock_curve": {
+    "rth_25_10": {
+      "progress_pct": [
+        10,
+        20,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80,
+        90,
+        100
+      ],
+      "completion_pct": [
+        69.8,
+        69.8,
+        69.8,
+        69.8,
+        74.7,
+        79.9,
+        85.6,
+        90.2,
+        95.1,
+        100.0
+      ]
+    }
+  }
+}
