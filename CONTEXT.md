@@ -59,6 +59,7 @@ pattern emerges, fix the source file directly.
 | **Look up instruments** | `_config/instruments.md` | — |
 | **Check period windows** | `_config/period-config.md` | — |
 | **Review audit trail** | `audit/audit_log.md` | — |
+| **Build/modify BLB detector** | `infra/CONTEXT.md` | `blbML.md` (spec), `_config/instruments.md` |
 
 ---
 
@@ -69,6 +70,7 @@ pattern emerges, fix the source file directly.
 | `lab/` | Python + C++ experiments → frozen configs + verified builds. | Harness engines, ACSIL compiler, `/autoresearch` |
 | `bench/` | Validation → verdicts. Holdout, stress test, assessment. | `/fractal_monitor` |
 | `deploy/` | Live monitoring. Paper trade, drift detection. | — |
+| `infra/` | Live infrastructure. Produces signals strategies consume. | SC shared memory IPC, Python ML |
 
 Each workspace has its own CONTEXT.md with full details. Read that
 when working in a workspace, not this file.

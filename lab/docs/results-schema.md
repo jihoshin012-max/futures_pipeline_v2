@@ -21,7 +21,7 @@ following this schema.
 | threshold | float | Keep rule threshold for this stage |
 | verdict | string | `kept`, `reverted`, `entry_time_violation`, `replication_fail` |
 | n_trades | int | Number of trades in calibration run |
-| calibration_windows | string | Which windows used (e.g., "W1+W2") |
+| calibration_range | string | Calibration date range used (e.g., "20250921-20251214") |
 | notes | string | Free-text (e.g., git hash, flags) |
 
 ## Rules

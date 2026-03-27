@@ -2,7 +2,22 @@
   "permissions": {
     "allow": [
       "Bash(git config:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(find /c/Projects/futures_pipeline -name *feature-engine.py -o -name *study.cpp -o -name *simulator.py -o -name *evaluator.py)",
+      "Read(//c/Projects/**)",
+      "Bash(grep -E \"\\\\.\\(py|cpp|json\\)$\")",
+      "Bash(find /c/Projects -name *.cpp -path *rotational* -o -name *.cpp -path *study*)",
+      "Bash(find /c/Projects/sierrachart -type f -name *.cpp)",
+      "Read(//c/SierraChart/SierraChartInstance_2/**)",
+      "Read(//c//**)",
+      "Bash(find c:/Projects/futures_pipeline -name *.cpp -o -name *.h)",
+      "Read(//e/SierraChart/ACS_Source/**)",
+      "Bash(du -sh C:/Projects/pipeline/stages/01-data/data/bar_data/tick/*.csv)"
+    ],
+    "additionalDirectories": [
+      "C:\\Projects\\pipeline\\shared\\archetypes\\rotational\\acsil"
     ]
   }
 }

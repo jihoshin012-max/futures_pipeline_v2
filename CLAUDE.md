@@ -75,7 +75,7 @@ These rules are enforced by git pre-commit hook:
 | `features` | Feature set (status: frozen when locked) |
 | `params` | Exit parameters (status: frozen when locked) |
 | `hypothesis` | Hypothesis config (status: frozen when promoted) |
-| `holdout-tradelog` | Holdout run output (window-tagged) |
+| `holdout-tradelog` | Holdout run output (date-range tagged) |
 | `stress-montecarlo` | Monte Carlo stress test |
 | `stress-slippage` | Slippage sweep |
 | `stress-kelly` | Kelly criterion / ruin prob |
@@ -117,10 +117,10 @@ evaluator as starting point, adapt to new strategy mechanics.
 - **Ready for validation:** Copy frozen configs to `bench/output/`
 
 ### Bench (validation)
-- **Holdout trade log:** `bench/output/[arch]-[inst]-holdout-tradelog-[window].csv`
-- **Holdout lock:** `bench/output/holdout-locked-[arch]-[inst]-[window].flag`
-- **Stress tests:** `bench/output/[arch]-[inst]-stress-[type]-[window].md`
-- **Verdicts:** `bench/output/[arch]-[inst]-verdict-[window]-validated.json`
+- **Holdout trade log:** `bench/output/[arch]-[inst]-holdout-tradelog-[YYYYMMDD-YYYYMMDD].csv`
+- **Holdout lock:** `bench/output/holdout-locked-[arch]-[inst]-[YYYYMMDD-YYYYMMDD].flag`
+- **Stress tests:** `bench/output/[arch]-[inst]-stress-[type]-[YYYYMMDD-YYYYMMDD].md`
+- **Verdicts:** `bench/output/[arch]-[inst]-verdict-[YYYYMMDD-YYYYMMDD]-validated.json`
 - **Ready for deployment:** Copy verdict + frozen params to `deploy/output/`
 
 ### Deploy (build & monitor)
@@ -157,6 +157,10 @@ pipeline/
 │   ├── instruments.md                        Tick size, tick value, sessions, costs
 │   └── period-config.md                      Rolling windows + role assignments
 │
+├── infra/                                 ← Live infrastructure (signals for strategies)
+│   ├── CONTEXT.md
+│   └── blb/                              ← Consolidation detection (ML + shared memory)
+│
 ├── harness/                               ← Shared engines (emerge from use, then fixed)
 ├── data/                                  ← Source bar/touch data
 ├── scoring/                               ← Scoring adapters + models
@@ -177,6 +181,7 @@ pipeline/
 | **Stress test a strategy** | `bench/CONTEXT.md` |
 | **Read statistical gates** | `bench/docs/statistical-gates.md` |
 | **Monitor live performance** | `deploy/CONTEXT.md` |
+| **Work on BLB consolidation detector** | `infra/CONTEXT.md` |
 | **Look up instrument constants** | `_config/instruments.md` |
 | **Check period windows and roles** | `_config/period-config.md` |
 | **Review experiment history** | `audit/audit_log.md` |

@@ -93,7 +93,7 @@ When a verified build arrives from bench:
 Ongoing observation. No code changes.
 
 - Import paper trade data to `output/[arch]-[inst]-paper-trades.csv`
-- Compare against `bench/output/[arch]-[inst]-verdict-[window]-validated.json`
+- Compare against `bench/output/[arch]-[inst]-verdict-[YYYYMMDD-YYYYMMDD]-validated.json`
   baseline (PF, win rate, drawdown, trade frequency)
 - Produce `output/[arch]-[inst]-drift-[YYYY-MM].md` monthly
 

@@ -2,52 +2,35 @@
 
 ## How Periods Work
 
-Data is organized into **windows** — fixed date ranges with permanent
-names. Each window is assigned a **role** that determines how it can
-be used. When new data arrives, roles shift — but windows never
-change or rename.
+All data before the holdout start date is calibration (IS).
+The holdout window is always the most recent ~3 months.
+When new data arrives, the old holdout becomes calibration
+and the new data becomes holdout. One edit.
 
-## Windows
+## Current Periods
 
-| Window | Start | End | Role |
-|--------|-------|-----|------|
-| W1 | — | — | calibration |
-| W2 | — | — | calibration |
-| W3 | — | — | holdout |
-
-<!--
-Add new windows as data becomes available. Fill in dates.
-The most recent complete quarter is typically holdout.
--->
-
-## Roles
-
-| Role | What it means | Agent rules |
-|------|--------------|-------------|
-| `calibration` | Free to use for search, iteration, tuning | Run as many experiments as budget allows |
-| `holdout` | One-shot validation. Frozen params only. | Check lock flag before running. Lock after. |
-| `future` | Not yet available. | Do not reference in any experiment. |
+| Role | Start | End |
+|------|-------|-----|
+| calibration | 2025-09-21 | 2025-12-14 |
+| holdout | 2025-12-15 | 2026-03-14 |
 
 ## Rolling Protocol
 
-When a new data window becomes available:
+When new quarterly data arrives:
+1. Change holdout start/end to the new quarter
+2. Calibration end extends to the old holdout end
+3. Calibration start stays the same (IS grows)
+4. Log to audit/audit_log.md
 
-1. The current `holdout` window → change role to `calibration`
-2. Add the new window → assign role `holdout`
-3. Update the table above (one edit)
-4. Old holdout lock flags are now irrelevant — that window is
-   calibration now, free to use
-5. New holdout window has no lock flag — available for one-shot run
-6. Log the roll to `audit/audit_log.md`
-
-**Nothing else changes.** No file renames, no folder restructuring.
-The agent reads this config and knows which window is which role.
+**That's it.** No window renaming, no file renaming, no role tables.
+Calibration grows automatically because "everything before holdout"
+includes more data each quarter.
 
 ## Replication Split
 
-For replication gating, calibration windows are split:
-- **Replica-A:** First half of all calibration windows combined
-- **Replica-B:** Second half of all calibration windows combined
+For replication gating, calibration date range is split at midpoint:
+- **Replica-A:** First half of calibration range
+- **Replica-B:** Second half of calibration range
 
 Hypotheses must pass on both halves before advancing.
 

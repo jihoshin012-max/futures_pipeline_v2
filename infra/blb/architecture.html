@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLB Consolidation Detection — Architecture Comparison</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e17;
+    color: #c8cdd3;
+    font-family: 'Consolas', 'SF Mono', 'Fira Code', monospace;
+    padding: 40px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 48px;
+  }
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    gap: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  .column {
+    padding: 0 24px;
+  }
+  .column-header {
+    text-align: center;
+    padding: 16px 24px;
+    margin-bottom: 32px;
+    border-radius: 8px;
+  }
+  .column-header h2 {
+    font-size: 18px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .column-header p {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  .old .column-header {
+    background: linear-gradient(135deg, #1e1a2e, #2d1f3d);
+    border: 1px solid #4a3660;
+  }
+  .old .column-header h2 { color: #c084fc; }
+  .new .column-header {
+    background: linear-gradient(135deg, #0f2027, #1a3a2a);
+    border: 1px solid #2d6a4f;
+  }
+  .new .column-header h2 { color: #4ade80; }
+
+  .divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 80px;
+  }
+  .divider-line {
+    width: 2px;
+    height: 100%;
+    min-height: 800px;
+    background: linear-gradient(to bottom, transparent, #334155 10%, #334155 90%, transparent);
+  }
+  .vs-badge {
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: bold;
+    color: #94a3b8;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Nodes */
+  .node {
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .node-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+    opacity: 0.6;
+  }
+  .node-title {
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .node-detail {
+    font-size: 12px;
+    line-height: 1.6;
+    opacity: 0.8;
+  }
+  .node-detail code {
+    background: rgba(255,255,255,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+
+  /* Node types */
+  .node-cpp {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #2a3a5c;
+  }
+  .node-cpp .node-title { color: #60a5fa; }
+
+  .node-python {
+    background: linear-gradient(135deg, #1a2a1a, #1e3a2e);
+    border: 1px solid #2d5a3f;
+  }
+  .node-python .node-title { color: #4ade80; }
+
+  .node-data {
+    background: linear-gradient(135deg, #2a2a1a, #3a3520);
+    border: 1px solid #5a5030;
+  }
+  .node-data .node-title { color: #fbbf24; }
+
+  .node-output {
+    background: linear-gradient(135deg, #2a1a1a, #3a2020);
+    border: 1px solid #5a3030;
+  }
+  .node-output .node-title { color: #f87171; }
+
+  .node-ipc {
+    background: linear-gradient(135deg, #1a2a2a, #1e3a3a);
+    border: 1px solid #2d5a5a;
+  }
+  .node-ipc .node-title { color: #22d3ee; }
+
+  .node-signal {
+    background: linear-gradient(135deg, #0f2a0f, #1a4a1a);
+    border: 2px solid #22c55e;
+  }
+  .node-signal .node-title { color: #22c55e; }
+
+  /* Arrows */
+  .arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+    position: relative;
+  }
+  .arrow-down {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .arrow-line {
+    width: 2px;
+    height: 16px;
+  }
+  .old .arrow-line { background: #7c3aed; }
+  .new .arrow-line { background: #22c55e; }
+  .arrow-head {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+  }
+  .old .arrow-head { border-top: 8px solid #7c3aed; }
+  .new .arrow-head { border-top: 8px solid #22c55e; }
+
+  .arrow-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 10px;
+    border-radius: 10px;
+    position: absolute;
+    right: 0;
+  }
+  .old .arrow-label {
+    color: #a78bfa;
+    background: rgba(124, 58, 237, 0.15);
+  }
+  .new .arrow-label {
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.15);
+  }
+
+  /* Gap marker */
+  .gap {
+    border: 2px dashed #ef4444;
+    border-radius: 8px;
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    text-align: center;
+    background: rgba(239, 68, 68, 0.05);
+  }
+  .gap-title {
+    color: #ef4444;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .gap-detail {
+    color: #fca5a5;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* Phase badges */
+  .phase-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .old .phase-badge {
+    background: rgba(124, 58, 237, 0.2);
+    color: #c084fc;
+    border: 1px solid #7c3aed;
+  }
+  .new .phase-badge {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border: 1px solid #22c55e;
+  }
+
+  /* Live indicator */
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid #22c55e;
+    margin-left: 8px;
+  }
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Parallel container */
+  .parallel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .parallel .node { margin-bottom: 0; }
+
+  .parallel-label {
+    font-size: 10px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  /* Key differences */
+  .differences {
+    max-width: 1400px;
+    margin: 60px auto 0;
+    padding: 32px;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border: 1px solid #334155;
+    border-radius: 12px;
+  }
+  .differences h3 {
+    font-size: 16px;
+    color: #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .diff-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .diff-card {
+    padding: 16px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #1e293b;
+  }
+  .diff-card h4 {
+    font-size: 12px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .diff-old {
+    font-size: 12px;
+    color: #c084fc;
+    margin-bottom: 6px;
+  }
+  .diff-new {
+    font-size: 12px;
+    color: #4ade80;
+  }
+  .diff-old::before { content: "OLD: "; font-weight: bold; opacity: 0.6; }
+  .diff-new::before { content: "NEW: "; font-weight: bold; opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<h1>BLB Consolidation Detection</h1>
+<p class="subtitle">Original Batch Pipeline vs Live Shared Memory Architecture</p>
+
+<div class="comparison">
+
+  <!-- OLD PROCESS -->
+  <div class="column old">
+    <div class="column-header">
+      <h2>Original Process</h2>
+      <p>Batch pipeline — train offline, hardcode thresholds</p>
+    </div>
+
+    <span class="phase-badge">Part 1</span>
+    <div class="node node-cpp">
+      <div class="node-label">ACSIL C++ Study</div>
+      <div class="node-title">BLB_ConsolidationTickCollector.cpp</div>
+      <div class="node-detail">
+        Runs on 1-tick chart<br>
+        Streams 20 fields per tick<br>
+        Output: <code>cons_tick_orderflow.csv</code>
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">csv file</span></div>
+
+    <span class="phase-badge">Part 2</span>
+    <div class="node node-python">
+      <div class="node-label">Python ML Pipeline</div>
+      <div class="node-title">blb_consolidation_trainer.py</div>
+      <div class="node-detail">
+        Engineers 21 features (6 groups)<br>
+        Rolls into ~42 model inputs<br>
+        Auto-labels via percentile thresholds<br>
+        Trains RandomForest (300 trees)<br>
+        Exports thresholds + model
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">thresholds.csv</span></div>
+
+    <div class="node node-data">
+      <div class="node-label">Artifacts</div>
+      <div class="node-title">Exported Files</div>
+      <div class="node-detail">
+        <code>consolidation_thresholds.csv</code><br>
+        <code>consolidation_model.pkl</code> (unused)<br>
+        <code>consolidation_why.png</code><br>
+        <code>labeled_data.csv</code>
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">human reads thresholds</span></div>
+
+    <span class="phase-badge">Part 3</span>
+    <div class="node node-cpp">
+      <div class="node-label">ACSIL C++ Study</div>
+      <div class="node-title">BLB_ConsolidationDetector.cpp</div>
+      <div class="node-detail">
+        Re-implements ML thresholds in C++<br>
+        6-feature simultaneous vote<br>
+        All must pass for signal = 1<br>
+        <strong>Binary output only</strong> (0 or 1)<br>
+        Feature #6 (Reversal) = placeholder
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">subgraph</span></div>
+
+    <div class="node node-signal">
+      <div class="node-title">sg_Signal = 0 or 1</div>
+      <div class="node-detail">Binary gate — consolidating or not</div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">no connection built</span></div>
+
+    <div class="node node-cpp" style="opacity: 0.7;">
+      <div class="node-label">Strategy</div>
+      <div class="node-title">ATEAM_ROTATION_V3_LP.cpp</div>
+      <div class="node-detail">
+        Martingale rotation: 1&rarr;2&rarr;4&rarr;8 contracts<br>
+        StepDist = fixed 2.0 pts<br>
+        <strong>No consolidation awareness</strong><br>
+        <strong>No breakout warning</strong><br>
+        No DOM structure insight
+      </div>
+    </div>
+
+    <div class="gap" style="margin-top: 24px;">
+      <div class="gap-title">Gaps in Original</div>
+      <div class="gap-detail">
+        .pkl model trained but never used live<br>
+        No probability scores — just pass/fail<br>
+        No rotation size output<br>
+        No breakout warning<br>
+        Reversal feature incomplete<br>
+        No DOM structure awareness (walls, absorption, reload)<br>
+        StepDist fixed regardless of actual rotation range
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="divider">
+    <div class="divider-line" style="height: 300px;"></div>
+    <div class="vs-badge">VS</div>
+    <div class="divider-line" style="height: 600px;"></div>
+  </div>
+
+  <!-- NEW PROCESS -->
+  <div class="column new">
+    <div class="column-header">
+      <h2>New Architecture</h2>
+      <p>Live shared memory IPC — Python ML scores every tick</p>
+    </div>
+
+    <span class="phase-badge">Phase 1</span>
+    <div class="node node-cpp">
+      <div class="node-label">ACSIL C++ Study</div>
+      <div class="node-title">BLB_ConsolidationTickCollector.cpp <span class="live-badge"><span class="live-dot"></span>LIVE</span></div>
+      <div class="node-detail">
+        Runs on 1-tick chart<br>
+        Streams 20 fields per tick<br>
+        Writes to CSV <strong>and</strong> shared memory ring buffer<br>
+        Creates both IPC regions on startup
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div></div>
+
+    <div class="parallel-label">dual output</div>
+    <div class="parallel">
+      <div class="node node-data">
+        <div class="node-label">Offline Path</div>
+        <div class="node-title">CSV File</div>
+        <div class="node-detail">
+          <code>cons_tick_orderflow.csv</code><br>
+          For training / retraining
+        </div>
+      </div>
+      <div class="node node-ipc">
+        <div class="node-label">Live Path</div>
+        <div class="node-title">Shared Memory</div>
+        <div class="node-detail">
+          <code>BLB_TickRing</code><br>
+          1024-slot ring buffer<br>
+          Atomic write index
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div></div>
+
+    <div class="parallel-label">parallel paths (Phase 3 independent of Phase 2)</div>
+    <div class="parallel">
+      <div>
+        <span class="phase-badge">Phase 2</span>
+        <div class="node node-python">
+          <div class="node-label">Offline Python — per blbML.md spec</div>
+          <div class="node-title">ML Training</div>
+          <div class="node-detail">
+            28 features &rarr; ~56 rolled inputs<br>
+            Auto-label consolidation (self-supervised)<br>
+            Train RandomForest (300 trees)<br>
+            Validate: feature importance should<br>
+            match prior findings (thick book #1,<br>
+            absorption #2)<br>
+            Saves <code>consolidation_model.pkl</code>
+          </div>
+        </div>
+      </div>
+      <div>
+        <span class="phase-badge">Phase 3</span>
+        <div class="node node-ipc">
+          <div class="node-label">IPC Bridge</div>
+          <div class="node-title">shared_memory.py</div>
+          <div class="node-detail">
+            TickRingReader<br>
+            SignalWriter<br>
+            ctypes + mmap
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">model.pkl + ring buffer</span></div>
+
+    <span class="phase-badge">Phase 4</span>
+    <div class="node node-python">
+      <div class="node-label">Always-On Python Process</div>
+      <div class="node-title">blb_live_scorer.py <span class="live-badge"><span class="live-dot"></span>LIVE</span></div>
+      <div class="node-detail">
+        Loads trained model at startup<br>
+        Reads ticks from ring buffer<br>
+        Engineers 56 rolling features<br>
+        Calls <code>model.predict_proba()</code><br>
+        Writes signal to shared memory<br>
+        Latency target: &lt;50ms
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">BLB_Signal (shared mem)</span></div>
+
+    <span class="phase-badge">Phase 5</span>
+    <div class="node node-cpp">
+      <div class="node-label">ACSIL C++ Study (thin)</div>
+      <div class="node-title">BLB_ConsolidationDetector.cpp <span class="live-badge"><span class="live-dot"></span>LIVE</span></div>
+      <div class="node-detail">
+        Reads signal struct from shared memory<br>
+        No feature computation — just reads values<br>
+        Exposes subgraphs<br>
+        Staleness detection (>500ms = stale)
+      </div>
+    </div>
+
+    <div class="arrow"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div><span class="arrow-label">subgraphs</span></div>
+
+    <div class="node node-signal">
+      <div class="node-title">Rich Signal Output</div>
+      <div class="node-detail">
+        <code>sg_Signal</code> — consolidation probability (0.0-1.0)<br>
+        <code>sg_RotationSize</code> — current rotation size<br>
+        <code>sg_BreakoutScore</code> — breakout imminence (0.0-1.0)<br>
+        <code>sg_Stale</code> — scorer health check
+      </div>
+    </div>
+
+    <div style="height: 32px;"></div>
+
+    <div style="border: 2px dashed #475569; border-radius: 12px; padding: 20px; background: rgba(255,255,255,0.02);">
+      <div style="font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; text-align: center; margin-bottom: 16px;">Future — requires live data collection first</div>
+
+      <span class="phase-badge" style="opacity: 0.5;">Phase 6</span>
+      <div class="node node-python" style="opacity: 0.5; border-style: dashed; border-color: #f59e0b;">
+        <div class="node-label" style="color: #f59e0b;">ML Strategy Learning</div>
+        <div class="node-title" style="color: #fbbf24;">ML learns to apply signals to strategy</div>
+        <div class="node-detail">
+          Uses Python rotation simulator + live signals<br>
+          Learns dynamic StepDist from rotation size<br>
+          Learns when to trade vs skip<br>
+          Learns when to reduce exposure (breakout)<br>
+          Requires live-collected data (DOM not in historical)
+        </div>
+      </div>
+
+      <div class="arrow" style="opacity: 0.5;"><div class="arrow-down"><div class="arrow-line"></div><div class="arrow-head"></div></div></div>
+
+      <span class="phase-badge" style="opacity: 0.5;">Phase 7</span>
+      <div class="node node-cpp" style="opacity: 0.5; border-style: dashed;">
+        <div class="node-label">Deploy — C++ or Python</div>
+        <div class="node-title">Execute trades with learned parameters</div>
+        <div class="node-detail">
+          Option A: Update C++ study with ML-learned settings<br>
+          Option B: Python executes directly if more efficient<br>
+          Needs Python&harr;C++ calibration if using both
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Key Differences -->
+<div class="differences">
+  <h3>Key Differences from Original</h3>
+  <div class="diff-grid">
+    <div class="diff-card">
+      <h4>Data Flow</h4>
+      <div class="diff-old">CSV file (batch, offline only)</div>
+      <div class="diff-new">Shared memory ring buffer (real-time) + CSV (training)</div>
+    </div>
+    <div class="diff-card">
+      <h4>Signal Type</h4>
+      <div class="diff-old">Binary (0 or 1)</div>
+      <div class="diff-new">Rich: probability + rotation size + breakout score</div>
+    </div>
+    <div class="diff-card">
+      <h4>ML Usage</h4>
+      <div class="diff-old">Train model, extract thresholds, discard model</div>
+      <div class="diff-new">Train model, run model live on every tick</div>
+    </div>
+    <div class="diff-card">
+      <h4>C++ Detector Role</h4>
+      <div class="diff-old">Re-implements all 6 features + vote logic in C++</div>
+      <div class="diff-new">Thin reader — just reads signal from shared memory</div>
+    </div>
+    <div class="diff-card">
+      <h4>Update Cycle</h4>
+      <div class="diff-old">Retrain &rarr; manually update C++ thresholds &rarr; recompile</div>
+      <div class="diff-new">Retrain &rarr; drop new .pkl &rarr; restart scorer</div>
+    </div>
+    <div class="diff-card">
+      <h4>Strategy (future)</h4>
+      <div class="diff-old">Fixed parameters, no consolidation awareness</div>
+      <div class="diff-new">ML learns dynamic parameters from live signal data</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
