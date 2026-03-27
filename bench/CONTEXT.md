@@ -1,0 +1,151 @@
+# Bench
+
+<!--
+last_reviewed: 2026-03-27
+review_cadence: quarterly
+-->
+
+## What This Workspace Is
+
+The proving ground. Strategies arrive here with frozen parameters
+from lab. Bench runs them against the current holdout window,
+stress tests robustness, and produces a pass/fail verdict.
+This is **downstream** of lab, **upstream** of deploy:
+
+- Reads frozen configs from lab/output/ (never edits lab code)
+- Reads `_config/period-config.md` to find the current holdout window
+- Approved strategies flow to deploy/ for C++ generation
+
+---
+
+## Where to Go
+
+| You Want To... | Go Here |
+|----------------|---------|
+| **Run holdout validation** | See Holdout section below |
+| **Stress test** | See Stress Test section below |
+| **Produce verdict** | See Verdict section below |
+| **Look up statistical gates** | `docs/statistical-gates.md` |
+| **Check which window is holdout** | `_config/period-config.md` |
+
+**Don't read everything.** Identify your task, load only what you need.
+
+---
+
+## Folder Structure
+
+```
+bench/
+├── CONTEXT.md                                       ← You are here
+├── docs/                                            ← Layer 3: reference
+│   └── statistical-gates.md                            PF thresholds, MWU, permutation gates
+└── output/                                          ← Layer 4: working artifacts
+    ├── [arch]-[inst]-holdout-tradelog-[window].csv      Holdout trade log
+    ├── [arch]-[inst]-stress-[type]-[window].md          Stress test reports
+    ├── [arch]-[inst]-verdict-[window]-validated.json    Final verdict
+    └── holdout-locked-[arch]-[inst]-[window].flag       Lock (this window is done)
+```
+
+---
+
+## What to Load
+
+| Task | Layer 3 (internalize as rules) | Layer 4 (process as input) | Skip |
+|------|-------------------------------|---------------------------|------|
+| Holdout run | `docs/statistical-gates.md`, `_config/instruments.md`, `_config/period-config.md` | Frozen params from `lab/output/` | All lab code, deploy |
+| Stress test | `docs/statistical-gates.md` | `output/[arch]-[inst]-holdout-tradelog-[window].csv` | Lab, deploy |
+| Verdict | `docs/statistical-gates.md`, `_config/regime-definitions.md` | Holdout tradelog + stress reports for same window | Lab, deploy |
+
+---
+
+## Holdout Validation
+
+**This runs exactly once per archetype+instrument+window. One shot.**
+
+1. Read `_config/period-config.md` — find the window with role `holdout`
+   (call it `[window]`, e.g., `W3`)
+2. Check: does `output/holdout-locked-[arch]-[inst]-[window].flag` exist?
+   - If yes AND window is still `holdout` in period-config: **STOP.** Done.
+   - If yes BUT window has rolled to `calibration`: lock is irrelevant, skip it.
+   - If no: proceed.
+3. Read frozen params from `bench/output/[arch]-[inst]-params-frozen.json`
+   (copied from lab/output/ during cross-workspace handoff)
+4. Run: `python harness/backtest_engine.py --config [frozen-params] --window [window]`
+5. Write trade log to `output/[arch]-[inst]-holdout-tradelog-[window].csv`
+6. Create `output/holdout-locked-[arch]-[inst]-[window].flag`
+7. Log to `audit/audit_log.md`
+
+**When periods roll:** A new holdout window means a fresh shot.
+Old lock flags stay but are irrelevant — their window is now
+calibration. History is preserved, not overwritten.
+
+---
+
+## Stress Test
+
+After holdout validation, run robustness checks against the holdout trade log:
+
+- **Monte Carlo:** Bootstrap resampling of trade sequence
+- **Slippage:** Sweep cost assumptions from 1t to 5t
+- **Kelly:** Kelly criterion sizing + ruin probability
+- **Prop firm sim:** Drawdown limits, profit targets, evaluation periods
+
+Each produces: `output/[arch]-[inst]-stress-[type]-[window].md`
+
+---
+
+## Verdict
+
+Deterministic computation. No judgment calls — just gates.
+
+1. Read holdout trade log + all stress reports for the same window
+2. Apply gates from `docs/statistical-gates.md` (PF, MWU p-value,
+   permutation p-value, percentile rank, drawdown limits)
+3. Write `output/[arch]-[inst]-verdict-[window]-validated.json`
+4. Write `output/[arch]-[inst]-verdict-[window]-report.md` (human-readable)
+5. Log to `audit/audit_log.md`
+
+Gate result is PASS or FAIL. No partial credit.
+
+### Handoff to Deploy
+
+If verdict is PASS: copy `bench/output/[arch]-[inst]-params-frozen.json`
+and `bench/output/[arch]-[inst]-verdict-[window]-validated.json` to
+`deploy/output/`. If verdict is FAIL, nothing moves to deploy.
+
+---
+
+## Skills & Tools for This Workspace
+
+<!--
+Skills activate at specific points in the validation workflow.
+  - STAGE TRIGGER: runs during a specific validation task
+  - ALWAYS-ON: applies to everything in this workspace
+  - ON-DEMAND: available when the user asks
+-->
+
+| Skill / Tool | Activation | When | Purpose |
+|-------------|-----------|------|---------|
+| `docs/statistical-gates.md` | ALWAYS-ON | Every validation task | Internalize pass/fail thresholds as constraints |
+| `_config/period-config.md` | ALWAYS-ON | Every validation task | Know which window is holdout, which is calibration |
+| `harness/backtest_engine.py` | STAGE TRIGGER | Holdout run | Run frozen config against holdout window data |
+| `_config/instruments.md` | STAGE TRIGGER | Holdout run | Tick size, cost for PF calculation |
+| `/fractal_monitor` | ON-DEMAND | Post-holdout | NQ fractal structure analysis, structural drift detection |
+
+### Skills You Might Add
+
+- **Monte Carlo sim skill** — automated bootstrap stress testing
+- **Kelly calculator** — position sizing + ruin probability computation
+- **Prop firm evaluator** — simulate drawdown/profit rules for specific firms
+- **Regime comparison** — compare calibration vs holdout regime distributions
+
+---
+
+## Hard Rules
+
+1. **Holdout is one shot per window.** Never re-run the same window
+   with different params. The flag file locks it per window.
+2. **Audit log is append-only.** Never delete or modify entries.
+3. **Verdicts are deterministic.** Same inputs → same output. No
+   subjective adjustments.
+4. **Never edit lab code from bench.** Read frozen outputs only.
