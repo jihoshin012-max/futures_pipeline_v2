@@ -59,7 +59,7 @@ These rules are enforced by git pre-commit hook:
 | `instrument` | `NQ`, `ES`, `GC`, or new from `_config/instruments.md` | yes |
 | `type` | see type catalog below | yes |
 | `status` | `draft`, `frozen`, `validated`, `deployed` | when applicable |
-| `ext` | `.py`, `.json`, `.tsv`, `.csv`, `.md`, `.cpp` | yes |
+| `ext` | `.py`, `.json`, `.tsv`, `.csv`, `.md`, `.cpp`, `.h`, `.txt` | yes |
 
 ### Type Catalog
 
@@ -80,7 +80,11 @@ These rules are enforced by git pre-commit hook:
 | `stress-slippage` | Slippage sweep |
 | `stress-kelly` | Kelly criterion / ruin prob |
 | `verdict` | Statistical pass/fail |
-| `study` | C++ ACSIL study implementation |
+| `study` | C++ ACSIL strategy study (single variant use `study`, multiple variants append `-variant`) |
+| `study-config` | Companion config for a study (.h or .txt — not compiled, human reference) |
+| `zone-detector` | C++ zone detection study (study chain dependency) |
+| `zone-detector-history` | C++ batch zone export study (study chain dependency) |
+| `touch-engine` | C++ touch detection + feature computation study (study chain dependency) |
 | `verify-report` | Cross-language verification report |
 | `build` | Deployment C++ (verified, ready for production) |
 | `deployment-checklist` | Human deployment verification checklist |
@@ -100,13 +104,21 @@ evaluator as starting point, adapt to new strategy mechanics.
 
 ## File Placement Rules
 
+### Data (source material)
+- **Naming:** `data/[instrument]-[source]-[role].csv` — see `data/README.md`
+- Data files are source material, not pipeline artifacts. They use their
+  own naming convention (no `[arch]` or `[status]` segments).
+- All data files are gitignored.
+
 ### Lab (experiments)
 - **Feature engines:** `lab/[arch]-[inst]-feature-engine.py`
 - **Simulators:** `lab/[arch]-[inst]-simulator.py`
 - **Evaluators:** `lab/[arch]-[inst]-evaluator.py`
 - **Hypothesis configs:** `lab/[arch]-[inst]-hypothesis-configs.py`
 - **Risk filters:** `lab/[arch]-[inst]-trend-defense.py`
-- **C++ studies:** `lab/[arch]-[inst]-study.cpp`
+- **C++ studies:** `lab/[arch]-[inst]-study.cpp` (or `study-[variant].cpp` for multiple variants)
+- **Study configs:** `lab/[arch]-[inst]-study-[variant]-config.{h,txt}` (companion reference)
+- **Study chain deps:** `lab/[arch]-[inst]-zone-detector.cpp`, `touch-engine.cpp`, etc.
 - **Experiment results:** `lab/output/[arch]-[inst]-results.tsv`
 - **Findings:** `lab/output/[arch]-[inst]-findings.md`
 - **Frozen features:** `lab/output/[arch]-[inst]-features-frozen.json`
@@ -162,7 +174,7 @@ pipeline/
 │   └── blb/                              ← Consolidation detection (ML + shared memory)
 │
 ├── harness/                               ← Shared engines (emerge from use, then fixed)
-├── data/                                  ← Source bar/touch data
+├── data/                                  ← Source market data (own naming: [inst]-[source]-[role].csv)
 ├── scoring/                               ← Scoring adapters + models
 ├── audit/                                 ← Append-only experiment log
 └── tests/
@@ -184,6 +196,7 @@ pipeline/
 | **Work on BLB consolidation detector** | `infra/CONTEXT.md` |
 | **Look up instrument constants** | `_config/instruments.md` |
 | **Check period windows and roles** | `_config/period-config.md` |
+| **Onboard data or roll holdout** | `data/onboarding.md` |
 | **Review experiment history** | `audit/audit_log.md` |
 
 ---

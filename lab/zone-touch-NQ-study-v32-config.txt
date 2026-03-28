@@ -1,0 +1,79 @@
+ATEAM Zone Touch V3.2 — Default Input Values
+==============================================
+Config Version: V32_2026-03-24
+All parameters frozen from P1/P2 backtesting.
+
+Study Inputs (sc.Input[N]):
+  [0]  ZTE Study ID            = 1
+  [1]  Enable Trading Logic     = No
+  [2]  Send Live Orders         = No
+  [3]  M1 A-Eq Threshold        = 45.5
+  [4]  M2 B-ZScore Threshold    = 0.5417
+  [5]  M2 Max Touch Sequence    = 2
+  [6]  M2 Max Timeframe (min)   = 120
+  [7]  M2 RTH Only              = Yes
+  [8]  Preemption Enabled       = No
+  [9]  Entry Offset (ticks)     = 0
+  [10] Entry Timeout (bars)     = 3
+  [11] M1 Stop (ticks)          = 190
+  [12] M1 T1 (ticks)            = 60
+  [13] M1 T2 (ticks)            = 120
+  [14] M1 T1 Contracts          = 1
+  [15] M1 T2 Contracts          = 2
+  [16] M1 BE After T1           = Yes
+  [17] M1 TimeCap (bars)        = 120
+  [18] M1 Total Contracts       = 3
+  [19] M2 Stop Multiplier       = 1.3
+  [20] M2 Stop Floor (ticks)    = 100
+  [21] M2 Target Multiplier     = 1.0
+  [22] M2 TimeCap (bars)        = 80
+  [23] M2 Size Narrow (<T1)     = 3
+  [24] M2 Size Mid (T1-T2)      = 2
+  [25] M2 Size Wide (>=T2)      = 1
+  [26] M2 Size Threshold 1      = 150
+  [27] M2 Size Threshold 2      = 250
+  [28] CB Daily Loss Limit      = 700
+  [29] CB Max Consecutive Losses = 5
+  [30] CB Max Drawdown (ticks)  = 1541
+  [31] CB Rolling PF Window     = 30
+  [32] CB Rolling PF Floor      = 1.0
+  [33] Circuit Breakers Enabled = Yes
+  [34] CB Reset (1 to reset)    = 0
+  [35] CSV Logging Enabled      = Yes
+  [36] Slot 0 TF (min)          = 15
+  [37] Slot 1 TF (min)          = 30
+  [38] Slot 2 TF (min)          = 60
+  [39] Slot 3 TF (min)          = 90
+  [40] Slot 4 TF (min)          = 120
+  [41] Slot 5 TF (min)          = 0
+  [42] Slot 6 TF (min)          = 0
+  [43] Slot 7 TF (min)          = 0
+  [44] Slot 8 TF (min)          = 0
+  [45] EOD Close Time (HHMM)    = 1550
+  [46] EOD Blackout (HHMM)      = 1530
+
+Feature-to-ZTE Mapping:
+  F10 (Prior Penetration)   → SignalRecord.PenetrationTicks from prior touch on same zone
+  F01 (Timeframe)           → SignalRecord.SourceSlot → Slot TF input mapping
+  F05 (Session)             → sc.BaseDateTimeIn bar time → session bins
+  F09 (ZW/ATR Ratio)        → SignalRecord.ZoneWidthTicks × 0.25 / ATR(14)
+  F21 (Zone Age)            → SignalRecord.ZoneAgeBars
+  F13 (Touch Bar Close Pos) → (Close-Low)/(High-Low) demand, (High-Close)/(High-Low) supply
+  F04 (Cascade State)       → SignalRecord.CascadeState (0=PRIOR_HELD, 1=NO_PRIOR, 2=PRIOR_BROKE)
+
+A-Eq Scoring (Mode 1):
+  7 features → bin-based points → sum → threshold 45.5 (max 70)
+
+B-ZScore (Mode 2):
+  18 one-hot-encoded features → StandardScaler → linear model → threshold 0.5417
+  Only 3 nonzero coefficients: F10 (-1.0945), F05_OpeningDrive (0.0361), F05_Overnight (-0.0657)
+
+Exit Architecture:
+  M1: 1ct@T1(60t) + 2ct@T2(120t), stop 190t, BE after T1, TC 120 bars
+  M2: All ct@target(1.0×ZW), stop max(1.3×ZW, 100t), TC 80 bars, sizing 3/2/1 by ZW
+
+Circuit Breakers:
+  Daily loss (700t)          → auto-resets at session open
+  Consecutive losses (5)     → manual reset (Input[34])
+  Max drawdown HWM (1541t)   → manual reset (Input[34])
+  Rolling PF <1.0 (30 trades) → manual reset (Input[34])

@@ -59,6 +59,7 @@ pattern emerges, fix the source file directly.
 | **Look up instruments** | `_config/instruments.md` | — |
 | **Check period windows** | `_config/period-config.md` | — |
 | **Review audit trail** | `audit/audit_log.md` | — |
+| **Onboard new data / roll holdout** | `data/onboarding.md` | `_config/period-config.md`, `data/README.md` |
 | **Build/modify BLB detector** | `infra/CONTEXT.md` | `blbML.md` (spec), `_config/instruments.md` |
 
 ---

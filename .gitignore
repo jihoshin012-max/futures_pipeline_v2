@@ -5,3 +5,7 @@ __pycache__/
 *.pickle
 *.dll
 .env
+
+# Data files (too large for git)
+data/*.csv
+data/*.txt
