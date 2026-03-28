@@ -9,16 +9,22 @@ and one verification gate.
 
 ## How Work Happens Here
 
-### Systematic Python pipeline (stages 01 → 02 → 03)
+### Data preparation (dataprep)
+
+Prepare raw data for baseline analysis and backtesting. Load,
+filter, validate, join, and output clean files. Must run before
+any experiment stages. Prompt specs live here as stage contracts.
+
+### Systematic Python pipeline (features → hypotheses → params)
 
 Sequential. One experiment at a time. Harness-driven. Produces
 frozen configs. Use this for rigorous calibration and screening.
 
 | Stage | What Happens | Reads From | Produces |
 |-------|-------------|------------|----------|
-| **01-features** | Screen features on calibration data | New archetype code | `features-frozen.json` |
-| **02-hypotheses** | Test hypothesis configs on calibration data | Frozen features from 01 | `hypothesis-frozen.json` |
-| **03-params** | Optimize exit params on calibration data | Promoted hypothesis from 02 | `params-frozen.json` |
+| **features** | Screen features on calibration data | New archetype code | `features-frozen.json` |
+| **hypotheses** | Test hypothesis configs on calibration data | Frozen features | `hypothesis-frozen.json` |
+| **params** | Optimize exit params on calibration data | Promoted hypothesis | `params-frozen.json` |
 
 Each stage has its own CONTEXT.md with an Inputs/Process/Outputs
 contract. Read the stage CONTEXT.md before starting work.
@@ -29,7 +35,7 @@ Edit, compile, replay, compare, iterate. Can happen before, during,
 or after the Python pipeline. See "C++ Development" section in
 `lab/CONTEXT.md` for process and tools.
 
-### Cross-language verification (stage 04 — optional)
+### Cross-language verification (verify — optional)
 
 Run when both `.py` and `.cpp` implementations exist for the same
 archetype+instrument. Must pass before handoff to bench.
@@ -39,11 +45,13 @@ archetype+instrument. Must pass before handoff to bench.
 ## Flow
 
 ```
-01-features
+dataprep
+    ↓ clean data + baseline analysis
+features
     ↓ human approves → features-frozen.json
-02-hypotheses
+hypotheses
     ↓ human approves → hypothesis-frozen.json
-03-params
+params
     ↓ human approves → params-frozen.json
     ↓
 verify (if C++ exists)
@@ -52,7 +60,7 @@ verify (if C++ exists)
 ```
 
 C++ development can happen at any point alongside this flow.
-Stage 04 is where Python and C++ must align before leaving lab.
+Verify is where Python and C++ must align before leaving lab.
 
 **Human gates between every stage.** No automatic promotion.
 
@@ -60,7 +68,7 @@ Stage 04 is where Python and C++ must align before leaving lab.
 
 ## Shared Rules (apply to all stages)
 
-- One change per experiment (Python pipeline)
+- One change per experiment (Python pipeline, not dataprep)
 - Log every run to `lab/output/[arch]-[inst]-results.tsv`
 - Keep or revert based on stage-specific metric and threshold
 - Constants always from `_config/instruments.md`

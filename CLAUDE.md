@@ -90,6 +90,7 @@ These rules are enforced by git pre-commit hook:
 | `deployment-checklist` | Human deployment verification checklist |
 | `paper-trades` | Live paper trade log |
 | `drift` | Drift monitoring report |
+| `prompt` | Experiment stage contract (Layer 3 — stable spec, not per-run) |
 | `journal` | Strategy progression narrative (append-only) |
 
 **Statuses:** `draft` → `frozen` → `validated` → `deployed`
@@ -119,6 +120,7 @@ evaluator as starting point, adapt to new strategy mechanics.
 - **C++ studies:** `lab/[arch]-[inst]-study.cpp` (or `study-[variant].cpp` for multiple variants)
 - **Study configs:** `lab/[arch]-[inst]-study-[variant]-config.{h,txt}` (companion reference)
 - **Study chain deps:** `lab/[arch]-[inst]-zone-detector.cpp`, `touch-engine.cpp`, etc.
+- **Prompts:** `lab/workflows/dataprep/[arch]-[inst]-prompt-[n]-[name].md`
 - **Experiment results:** `lab/output/[arch]-[inst]-results.tsv`
 - **Findings:** `lab/output/[arch]-[inst]-findings.md`
 - **Frozen features:** `lab/output/[arch]-[inst]-features-frozen.json`
@@ -153,7 +155,7 @@ pipeline/
 │   ├── CONTEXT.md
 │   ├── docs/                              ← Simulation rules, feature rules
 │   ├── output/                            ← Results, findings, frozen configs
-│   └── workflows/                         ← Experiment pipeline (3 stages + verify)
+│   └── workflows/                         ← Experiment pipeline (dataprep + 3 stages + verify)
 │
 ├── bench/                                 ← Validate and judge strategies
 │   ├── CONTEXT.md

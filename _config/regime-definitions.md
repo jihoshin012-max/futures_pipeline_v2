@@ -26,8 +26,8 @@ Do not hand-edit — update by re-running the fitter on new data.
 
 ## Usage
 
-- **Lab (02-hypotheses):** Regime-aware hypothesis configs may
+- **Lab (hypotheses):** Regime-aware hypothesis configs may
   filter or weight by regime label
-- **Lab (03-params):** Regime breakdown in results analysis
+- **Lab (params):** Regime breakdown in results analysis
 - **Bench (verdict):** Regime-stratified PF comparison
   (if n_trades >= 20 per regime bucket)

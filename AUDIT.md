@@ -22,7 +22,7 @@ Traced 5 end-to-end scenarios through the full layer stack.
 | 2 | HIGH | Frozen params cross-workspace read ambiguity — CLAUDE.md says "copy to bench/output/" but bench/CONTEXT.md read from "lab/output/" | CLAUDE.md, bench/CONTEXT.md, deploy/CONTEXT.md | Added handoff protocol to CLAUDE.md; bench and deploy read from own output/ |
 | 3 | HIGH | "Get verdict" task missing cross-workspace dependencies in router | CONTEXT.md line 41 | Added: holdout tradelog + stress reports from bench/output/ |
 | 4 | MEDIUM | `deployment-checklist` referenced in deploy/CONTEXT.md but missing from type catalog | CLAUDE.md type catalog | Added `deployment-checklist` type |
-| 5 | MEDIUM | Stage workflow dirs (01-features/output/, references/) exist but nothing writes there | lab/workflows/01-features/, 02-hypotheses/, 03-params/ | Removed unused output/ and references/ dirs from stages |
+| 5 | MEDIUM | Stage workflow dirs (01-features/output/, references/) exist but nothing writes there | lab/workflows/features/, hypotheses/, params/ | Removed unused output/ and references/ dirs from stages; later renamed to drop number prefixes |
 | 6 | MEDIUM | `frozen-features-frozen.json` double-frozen naming inconsistent with `hypothesis-frozen.json` | CLAUDE.md, all stage CONTEXT.md files | Renamed types: `frozen-features` → `features`, `frozen-params` → `params`. Now `features-frozen.json`, `params-frozen.json`, `hypothesis-frozen.json` |
 | 7 | MEDIUM | "Understand experiment pipeline" routed in CLAUDE.md quick nav but missing from CONTEXT.md task routing | CONTEXT.md task routing table | Added routing entry |
 | 8 | LOW | `_config/period-config.md` referenced 17 times but missing from quick nav | CLAUDE.md, CONTEXT.md | Added to both quick nav tables |
@@ -33,7 +33,7 @@ Traced 5 end-to-end scenarios through the full layer stack.
 
 ### Scenario A: Screen features for rotational-NQ
 
-**Flow:** CONTEXT.md → lab/CONTEXT.md → lab/workflows/CONTEXT.md → lab/workflows/01-features/CONTEXT.md → loads feature-rules.md + instruments.md → edits lab/rotational-NQ-feature-engine.py → runs harness/evaluate_features.py → appends lab/output/rotational-NQ-results.tsv → human approves → lab/output/rotational-NQ-features-frozen.json
+**Flow:** CONTEXT.md → lab/CONTEXT.md → lab/workflows/CONTEXT.md → lab/workflows/features/CONTEXT.md → loads feature-rules.md + instruments.md → edits lab/rotational-NQ-feature-engine.py → runs harness/evaluate_features.py → appends lab/output/rotational-NQ-results.tsv → human approves → lab/output/rotational-NQ-features-frozen.json
 
 **Result:** Flow is correct. Blocked only by empty harness/ (expected for scaffold).
 

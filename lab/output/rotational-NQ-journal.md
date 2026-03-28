@@ -26,5 +26,5 @@ for full inventory.
 evaluator, or hypothesis configs exist.
 
 **Current state:** C++ study exists, data is in place. Ready for
-either Python pipeline development (01-features) or continued
+either Python pipeline development (features) or continued
 C++ iteration.

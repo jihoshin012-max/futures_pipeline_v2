@@ -61,6 +61,7 @@ The journal carries the full narrative. Read it before starting any task.
 
 | You Want To... | Go Here |
 |----------------|---------|
+| **Prepare data for experiments** | `workflows/dataprep/` |
 | **Run Python experiments** | `workflows/CONTEXT.md` |
 | **Develop/iterate C++ study** | See "C++ Development" below |
 | **Verify Python ↔ C++ match** | `workflows/verify/CONTEXT.md` |
@@ -82,12 +83,12 @@ The journal carries the full narrative. Read it before starting any task.
 |-------------|-----------|------|---------|
 | `docs/simulation-rules.md` | ALWAYS-ON | Every experiment | Internalize entry/exit/trail/cost mechanics |
 | `_config/instruments.md` | ALWAYS-ON | Every experiment | Tick size, cost, session times — never hardcode |
-| `docs/feature-rules.md` | STAGE TRIGGER | 01-features | Valid features, entry-time constraint |
-| `docs/exit-templates.md` | STAGE TRIGGER | 03-params | Exit patterns during param optimization |
+| `docs/feature-rules.md` | STAGE TRIGGER | features | Valid features, entry-time constraint |
+| `docs/exit-templates.md` | STAGE TRIGGER | params | Exit patterns during param optimization |
 | `/autoresearch` | STAGE TRIGGER | 01, 02, 03 | Orchestrate edit-run-evaluate-log loop |
-| `harness/evaluate_features.py` | STAGE TRIGGER | 01-features | Python: fixed evaluator — bin spread |
-| `harness/hypothesis_generator.py` | STAGE TRIGGER | 02-hypotheses | Python: fixed generator — calibration + replica |
-| `harness/backtest_engine.py` | STAGE TRIGGER | 03-params | Python: fixed engine — PF |
+| `harness/evaluate_features.py` | STAGE TRIGGER | features | Python: fixed evaluator — bin spread |
+| `harness/hypothesis_generator.py` | STAGE TRIGGER | hypotheses | Python: fixed generator — calibration + replica |
+| `harness/backtest_engine.py` | STAGE TRIGGER | params | Python: fixed engine — PF |
 | ACSIL workspace (`C:\Projects\sierrachart`) | ON-DEMAND | C++ development | External agent — generates, compiles, verifies C++ studies. Writes study.cpp directly to lab/. |
 | Replay comparison | STAGE TRIGGER | verify | Compare Python vs C++ output |
 | `/zone-data-prep` | ON-DEMAND | Pre-01 | Prepare zone touch data |
@@ -141,8 +142,9 @@ lab/
 │   └── [arch]-[inst]-verify-report.md
 └── workflows/
     ├── CONTEXT.md
-    ├── 01-features/
-    ├── 02-hypotheses/
-    ├── 03-params/
+    ├── dataprep/
+    ├── features/
+    ├── hypotheses/
+    ├── params/
     └── verify/
 ```

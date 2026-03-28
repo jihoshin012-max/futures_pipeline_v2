@@ -14,7 +14,7 @@ following this schema.
 | timestamp | ISO 8601 | When the experiment ran |
 | arch | string | Archetype slug |
 | instrument | string | Instrument slug |
-| stage | string | `01-features`, `02-hypotheses`, or `03-params` |
+| stage | string | `features`, `hypotheses`, or `params` |
 | change_description | string | What was changed (one param, one feature) |
 | metric_name | string | `spread` (stage 01), `pf` (stages 02-03) |
 | metric_value | float | Measured value |

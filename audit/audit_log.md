@@ -13,3 +13,5 @@ Append-only. Never delete or modify entries.
 | 2026-03-27 | rotational | NQ | DATA_ONBOARDED | 18 data files copied from old pipeline, renamed to [instrument]-[source]-[role].csv convention. See data/README.md |
 | 2026-03-27 | rotational | NQ | STUDY_RELOCATED | rotational-NQ-speedread.cpp moved to ACSIL workspace (C:\Projects\pipeline\shared\archetypes\rotational\acsil). Not a strategy — general-purpose indicator. Pipeline keeps data output (NQ-speedread-calibration.csv) |
 | 2026-03-27 | zone-touch | NQ | STUDY_ONBOARDED | 6 C++ studies + 3 config files onboarded from old pipeline: 3 strategy variants (fixed, zonerel, v32), 3 study chain deps (zone-detector, zone-detector-history, touch-engine) |
+| 2026-03-28 09:57:03 | — | — | PERIOD_CONFIG_CHANGED | -| holdout | 2025-12-15 | 2026-03-14 |
++| holdout | 2025-12-17 | 2026-03-13 | — reason: TODO |

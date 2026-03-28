@@ -1,365 +1,271 @@
 # SKILL: NQ Zone Touch Data Preparation
-version: 1.0
-last_reviewed: 2026-03-20
+
+version: 2.0
+last_reviewed: 2026-03-27
 
 ## Purpose
 
-Automate the zone touch data preparation pipeline: load raw Sierra Chart exports (ZRA touches, ZB4 signals, rotational bar data), merge them, verify data quality, split into analysis periods, and output clean files ready for feature engineering and backtesting.
+Load ZTE touch data, 1-tick bar data, 250-volume bar data, and ray
+context data. Filter, validate, join, and output clean files ready
+for baseline analysis and backtesting in the futures pipeline scaffold.
 
 ## Trigger Conditions
 
 Use this skill when the user:
-- Mentions processing zone data, ZRA data, ZB4 data, or zone touch files
+- Mentions processing zone data, ZTE data, or zone touch files
 - Asks to prepare data for the zone touch pipeline
-- Uploads files matching: `NQ_ZRA_Hist_*`, `NQ_ZB4_signals_*`, `NQ_BarData_250vol_rot_*`
-- References "Prompt 0" or "data prep" in the context of the zone touch strategy
-- Asks to add a new period (P3, P4, etc.) to existing zone data
+- References "data prep" or "onboard zone data"
+- Asks to add new period data to existing zone touch files
 
-## Input Files
+## Source Data
 
-| Pattern | Description | Source |
-|---------|-------------|--------|
-| `NQ_ZRA_Hist_{period}.csv` | Zone touches with outcomes (33 cols) | ZoneReactionAnalyzer |
-| `NQ_ZB4_signals_{period}.csv` | Zone touches with scoring features (30 cols) | ZoneBounceSignalsV4 |
-| `NQ_BarData_250vol_rot_{period}.csv` | 250-volume rotational bar data (35 cols) | Sierra Chart |
+All source files live in `data/` following the scaffold naming
+convention. See `data/README.md` for current file listing.
 
-Period labels: P1, P2, P3, etc. Each covers a contiguous date range.
+### Required Files
 
-Located in: `stages/01-data/data/touches/` (ZRA, ZB4) and `stages/01-data/data/bar_data/volume/` (bar data).
-
-## Output Files
-
-All outputs go to `stages/01-data/output/zone_prep/`:
-
-| File | Description |
-|------|-------------|
-| `NQ_merged_{subperiod}.csv` | Merged zone touches for one sub-period (P1a, P1b, P2a, P2b) |
-| `NQ_bardata_{parent}.csv` | Rotational bar data (copied unchanged from input, one per parent period) |
-| `period_config.json` | Date boundaries, touch counts, instrument metadata |
-| `data_preparation_report.md` | Full verification results and distributions |
-
----
+| Data | Description | Source |
+|------|-------------|--------|
+| ZTE touch data | Zone touches with features, geometry, outcomes (52 cols) | ZoneTouchEngine v4.0 on 250-vol chart |
+| 1-tick bar data | Tick-level OHLCV for simulation resolution | Sierra Chart 1-tick export |
+| 250-volume bar data | Volume bars for feature context | Sierra Chart 250-vol export |
+| Ray context data | Broken zone rays with source metadata (7 cols, long format) | ZoneTouchEngine v4.0 |
 
 ## Configuration (read from project, never hardcode)
 
-- **Instrument constants:** Read from `_config/instruments.md` (tick_size, tick_value, session times)
-- **Period boundaries:** Read from `_config/period_config.md` (start/end dates per period)
-- **Data paths:** Read from `_config/data_registry.md` (file patterns, source IDs)
-- **Split rule:** Read from `_config/period_config.md` (`p1_split_rule` field)
-
-Current NQ constants (for reference only -- always read from registry):
-- tick_size = 0.25
-- tick_value = $5.00
-- cost_ticks = 3
+- **Instrument constants:** `_config/instruments.md` (tick_size, tick_value, session times)
+- **Period boundaries:** `_config/period-config.md` (calibration/holdout date ranges)
+- **Cost assumption:** `_config/instruments.md` (experiment_cost_ticks)
 
 ---
 
-## Column Schemas
+## ZTE Raw Schema (52 columns)
 
-### ZRA CSV (33 columns -- primary data source)
+| # | Column | Type | Description |
+|---|--------|------|-------------|
+| 1 | DateTime | datetime | Touch timestamp |
+| 2 | BarIndex | int | 250-vol chart bar index |
+| 3 | TouchType | string | DEMAND_EDGE, SUPPLY_EDGE, or VP_RAY |
+| 4 | ApproachDir | int | -1 = from above (demand), +1 = from below (supply) |
+| 5 | TouchPrice | float | Price at zone edge |
+| 6 | ZoneTop | float | Zone upper boundary |
+| 7 | ZoneBot | float | Zone lower boundary |
+| 8 | HasVPRay | int | 1 = VP imbalance ray present (dead — always 0) |
+| 9 | VPRayPrice | float | VP ray price (dead — always 0) |
+| 10 | Reaction | float | Max favorable excursion (ticks, on 250-vol bars) |
+| 11 | Penetration | float | Max adverse excursion (ticks, on 250-vol bars) |
+| 12 | ReactionPeakBar | int | Bar index of max reaction |
+| 13 | ZoneBroken | int | 1 = zone broken during observation |
+| 14 | BreakBarIndex | int | Bar index where zone broke (-1 if not) |
+| 15 | BarsObserved | int | Bars between touch and resolution |
+| 16 | TouchSequence | int | Nth touch of this zone |
+| 17 | ZoneAgeBars | int | Bars since zone appeared |
+| 18 | ApproachVelocity | float | 10-bar lookback price change (ticks) |
+| 19 | TrendSlope | float | 50-bar lookback price change (ticks) |
+| 20 | SourceLabel | string | TF label (15m-720m) |
+| 21 | SourceChart | int | SC chart number (drop) |
+| 22 | SourceStudyID | int | SC study ID (drop) |
+| 23-29 | RxnBar_30..360 | int | First bar reaching reaction threshold (-1 = never) |
+| 30-33 | PenBar_30..120 | int | First bar reaching penetration threshold (-1 = never) |
+| 34 | ZoneWidthTicks | int | (ZoneTop - ZoneBot) / tick_size |
+| 35 | CascadeState | string | PRIOR_HELD, PRIOR_BROKE, NO_PRIOR, UNKNOWN |
+| 36 | CascadeActive | int | 1 = cascade within lookback |
+| 37 | TFWeightScore | int | TF weight component |
+| 38 | TFConfluence | int | # of higher TFs with aligned zones |
+| 39 | SessionClass | int | 0=Open, 1=MidDay, 2=Afternoon, 3=OffHours |
+| 40 | DayOfWeek | int | 0=Sun..6=Sat |
+| 41 | ModeAssignment | string | M1F, M1H, M3, M4, M5, SKIP |
+| 42 | QualityScore | int | A-Cal quality score |
+| 43 | ContextScore | int | A-Cal context score |
+| 44 | TotalScore | int | QualityScore + ContextScore |
+| 45 | SourceSlot | int | Chart slot index (0-8) |
+| 46 | ConfirmedBar | int | Bar where signal confirmed |
+| 47 | HtfConfirmed | int | 1 = HTF confirmation |
+| 48 | Active | int | 1 = unresolved at export |
+| 49 | DemandRayPrice | float | Nearest broken demand ray price |
+| 50 | SupplyRayPrice | float | Nearest broken supply ray price |
+| 51 | DemandRayDistTicks | float | Distance to demand ray (ticks) |
+| 52 | SupplyRayDistTicks | float | Distance to supply ray (ticks) |
 
-| # | Column | Type | Keep? |
-|---|--------|------|-------|
-| 1 | DateTime | timestamp | YES |
-| 2 | BarIndex | int | YES |
-| 3 | TouchType | string | YES (DEMAND_EDGE / SUPPLY_EDGE) |
-| 4 | ApproachDir | string | YES |
-| 5 | TouchPrice | float | YES |
-| 6 | ZoneTop | float | YES |
-| 7 | ZoneBot | float | YES |
-| 8 | HasVPRay | 0/1 | YES |
-| 9 | VPRayPrice | float | YES |
-| 10 | Reaction | float (ticks) | YES -- max favorable excursion |
-| 11 | Penetration | float (ticks) | YES -- max adverse excursion |
-| 12 | ReactionPeakBar | int | YES |
-| 13 | ZoneBroken | 0/1 | YES |
-| 14 | BreakBarIndex | int | YES |
-| 15 | BarsObserved | int | YES |
-| 16 | TouchSequence | int | YES |
-| 17 | ZoneAgeBars | int | YES |
-| 18 | ApproachVelocity | float | YES |
-| 19 | TrendSlope | float | YES |
-| 20 | SourceChart | int | DROP (SC internal) |
-| 21 | SourceStudyID | int | DROP (SC internal) |
-| 22 | SourceLabel | string | YES (15m-720m TF labels) |
-| 23-29 | RxnBar_30 -- RxnBar_360 | float | YES |
-| 30-33 | PenBar_30 -- PenBar_120 | float | YES |
+## Ray Context Schema (7 columns, long format)
 
-### ZB4 CSV (30 columns -- supplementary)
+One row per (touch, nearby ray) pair. A touch with 6 nearby rays = 6 rows.
 
-Only TWO columns are pulled from ZB4:
+| # | Column | Type | Description |
+|---|--------|------|-------------|
+| 1 | TouchID | string | Composite key: BarIndex_TouchType_SourceLabel |
+| 2 | RayPrice | float | Broken zone ray price level |
+| 3 | RaySide | string | DEMAND or SUPPLY |
+| 4 | RayDirection | string | ABOVE or BELOW relative to touch edge |
+| 5 | RayDistTicks | float | Distance from touch edge to ray (always positive) |
+| 6 | RayTF | string | TF of the zone that produced the ray |
+| 7 | RayAgeBars | int | Bars since ray accumulated |
 
-| # | Column | Pull? | Notes |
-|---|--------|-------|-------|
-| 1 | DateTime | Match key only | |
-| 5 | TouchPrice | Match key only | |
-| 3 | TouchType | Match key only | |
-| 16 | SourceLabel | Match key only | |
-| 18 | TFConfluence | **YES** | # of TFs with zone at this price |
-| 19 | CascadeState | **YES -- critical** | PRIOR_HELD / NO_PRIOR / PRIOR_BROKE |
+### Ray Join Key
 
-NEVER pull: ModeAssignment, QualityScore, ContextScore, TotalScore, or any other ZB4 column.
-
-### Rotational Bar Data (35 columns)
-
-| Cols | Content |
-|------|---------|
-| 1-2 | Date, Time |
-| 3-6 | Open, High, Low, Last |
-| 7 | Volume |
-| 8 | # of Trades |
-| 9-11 | OHLC Avg, HLC Avg, HL Avg |
-| 12-13 | Bid Volume, Ask Volume |
-| 14-21 | Zig Zag indicators (Line Length at col 17 is non-zero only at swing endpoints) |
-| 22 | Sum |
-| 23-26 | Channel set 1 (narrow): Top, Bottom, Top MovAvg, Bottom MovAvg |
-| 27-30 | Channel set 2 (wide): Top, Bottom, Top MovAvg, Bottom MovAvg |
-| 31-34 | Channel set 3 (medium): Top, Bottom, Top MovAvg, Bottom MovAvg |
-| 35 | ATR |
-
-Duplicate column names exist (cols 22-33). Load with `header=0` + rename by positional index.
-
----
-
-## Merge Logic
-
-### Match Key Construction
-
-```
-key = floor(DateTime, 'min') | round(TouchPrice, 2) | TouchType | SourceLabel
-```
-
-All four parts are required. SourceLabel distinguishes touches from different TFs at the same price/time. TouchPrice must be rounded to 2 decimal places to avoid float precision mismatches.
-
-### Merge Steps
-
-1. Left join: ZRA <- ZB4 on match key (ZRA is primary -- every ZRA row kept)
-2. Pull only `CascadeState` and `TFConfluence` from ZB4
-3. Unmatched ZRA rows: set CascadeState = "UNKNOWN", TFConfluence = -1
-4. Multiple ZB4 matches to one ZRA key: keep first ZB4 match
-5. Multiple ZRA rows sharing a key: keep ALL (print warning if count > 1% of total)
-
-### Expected Match Rates
-
-- P1: 100% (verified on 4,964 rows)
-- P2: 99.8% (7 unmatched -- first 4hrs of Dec 15, ZB4 state building)
-- New periods: expect >= 99.5%. Investigate if below 99%.
-
----
-
-## Derived Columns
-
-| Column | Formula | Notes |
-|--------|---------|-------|
-| ZoneWidthTicks | (ZoneTop - ZoneBot) / tick_size | tick_size from instruments.md |
-| SBB_Label | "SBB" if ZoneBroken=1 AND (BreakBarIndex - BarIndex) <= 1, else "NORMAL" | Informational -- do NOT filter |
-| RotBarIndex | Index of nearest bar in parent period bar data where bar timestamp <= touch DateTime | P1a and P1b both reference NQ_bardata_P1.csv |
-| Period | Sub-period label (P1a, P1b, P2a, P2b) | Assigned after split |
-
-### Columns Dropped
-
-- SourceChart (ZRA col 20) -- SC internal
-- SourceStudyID (ZRA col 21) -- SC internal
-
----
-
-## VP_RAY Touch Handling
-
-ZRA may contain VP_RAY touches (TouchType = "VP_RAY"). Filter these out BEFORE merging. Print count removed per period. Confirm only DEMAND_EDGE and SUPPLY_EDGE remain.
-
----
-
-## Period Splitting
-
-### Rules
-
-1. Each parent period (P1, P2) splits into two halves (P1->P1a+P1b, P2->P2a+P2b)
-2. Split method: read `p1_split_rule` from `_config/period_config.md` (default: midpoint)
-3. For midpoint: sort by DateTime, find median, round to nearest day boundary
-4. Sub-periods must be contiguous and non-overlapping
-5. Determined from data, never hardcoded
-
-### Period Roles
-
-- **P1a:** Calibrate everything (scoring, features, exits)
-- **P1b:** Validate calibration (frozen P1a params, check overfit)
-- **P2a:** First holdout (one-shot, no iteration)
-- **P2b:** Second holdout (independent confirmation)
-
----
-
-## Verification Checks (all must pass)
-
-| Check | Criterion |
-|-------|-----------|
-| No nulls in key columns | TouchPrice, ZoneTop, ZoneBot, Reaction, Penetration all non-null |
-| Valid TouchType | All values in {DEMAND_EDGE, SUPPLY_EDGE} |
-| Valid SourceLabel | All values in {15m, 30m, 60m, 90m, 120m, 240m, 360m, 480m, 720m} |
-| Valid CascadeState | All values in {PRIOR_HELD, NO_PRIOR, PRIOR_BROKE, UNKNOWN} |
-| Non-negative outcomes | Reaction >= 0 and Penetration >= 0 |
-| Zone ordering | ZoneTop > ZoneBot for all rows |
-| Date range | All rows within expected period boundaries |
-| Minimum sample | Each sub-period has >= 500 touches |
-
-Fail loudly on any check failure -- do not proceed.
-
----
-
-## Output Merged CSV Column Order (canonical)
-
-DateTime, BarIndex, TouchType, ApproachDir, TouchPrice, ZoneTop, ZoneBot, HasVPRay, VPRayPrice, Reaction, Penetration, ReactionPeakBar, ZoneBroken, BreakBarIndex, BarsObserved, TouchSequence, ZoneAgeBars, ApproachVelocity, TrendSlope, SourceLabel, RxnBar_30, RxnBar_60, RxnBar_90, RxnBar_120, RxnBar_180, RxnBar_240, RxnBar_360, PenBar_30, PenBar_60, PenBar_90, PenBar_120, ZoneWidthTicks, CascadeState, TFConfluence, SBB_Label, RotBarIndex, Period
-
-Do NOT reorder columns. This schema is canonical.
-
----
-
-## Reporting Outputs
-
-### data_preparation_report.md
-
-1. **File inventory:** all input files with row counts and date ranges
-2. **Merge results:** matched/unmatched counts per period, unmatched list (if <= 20)
-3. **Distributions per sub-period:**
-   - TouchType breakdown
-   - SourceLabel (TF) breakdown
-   - CascadeState breakdown
-   - SBB rate per TF
-   - ZoneWidthTicks stats (min, max, mean, median)
-   - TouchSequence distribution (1, 2, 3, 4, 5+)
-   - HasVPRay rate
-4. **Bar data join:** match rate, max gap
-5. **Period split:** boundaries, touch counts per sub-period
-6. **Sanity check results:** pass/fail for each check
-
-### period_config.json
-
-```json
-{
-  "instrument": "NQ",
-  "tick_size": 0.25,
-  "tick_value_dollars": 5.00,
-  "bar_type": "250-volume",
-  "periods": {
-    "P1a": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "touches": 0, "parent": "P1"},
-    "P1b": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "touches": 0, "parent": "P1"},
-    "P2a": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "touches": 0, "parent": "P2"},
-    "P2b": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "touches": 0, "parent": "P2"}
-  },
-  "bar_data_files": {
-    "P1": "NQ_bardata_P1.csv",
-    "P2": "NQ_bardata_P2.csv"
-  },
-  "total_touches": 0,
-  "generated_at": "ISO-8601 timestamp"
-}
+```python
+zte['TouchID'] = zte['BarIndex'].astype(str) + '_' + zte['TouchType'] + '_' + zte['SourceLabel']
 ```
 
 ---
 
 ## Execution Sequence
 
-Follow these steps in order. Each depends on the previous.
+### Step 1: Load all source files
 
-### Step 1: Load all input files
+Load ZTE touch data, 1-tick bars, 250-vol bars, and ray context
+for each period. Read file names from `data/README.md`.
 
-Load ZRA, ZB4, and bar data CSVs for each period. Print row counts and date ranges.
+Read tick_size from `_config/instruments.md`.
+Read calibration/holdout dates from `_config/period-config.md`.
 
-Read tick_size from `_config/instruments.md`. Read period boundaries from `_config/period_config.md`.
+Print row counts and date ranges for each file.
 
-### Step 2: Filter VP_RAY touches from ZRA
+### Step 2: Filter VP_RAY touches
 
-Remove rows where TouchType = "VP_RAY". Print count removed per period. Confirm all remaining rows are DEMAND_EDGE or SUPPLY_EDGE.
+Remove rows where TouchType = "VP_RAY" from ZTE data.
+Print count removed per period.
+Confirm only DEMAND_EDGE and SUPPLY_EDGE remain.
 
-### Step 3: Trim ZB4 to ZRA date ranges
+### Step 3: Drop SC internal columns
 
-ZB4 may extend beyond ZRA's boundaries. Trim to match.
+Drop SourceChart (col 21) and SourceStudyID (col 22) from ZTE data.
 
-> REMINDER: Only CascadeState and TFConfluence come from ZB4. Do NOT pull ModeAssignment, QualityScore, ContextScore, TotalScore, or any other ZB4 column.
+### Step 4: Filter ray context data
 
-### Step 4: Build match keys and merge
+Remove rays that fail either filter:
+- **Exclude** rays where RayTF < 60 minutes (15m, 30m rays removed)
+- **Exclude** rays from SBB zones
 
-Key = `floor(DateTime, 'min') | round(TouchPrice, 2) | TouchType | SourceLabel`
+For SBB identification in ray data: a ray comes from a broken zone.
+Cross-reference with ZTE data — if the zone that produced the ray
+was an SBB (ZoneBroken=1 AND BreakBarIndex - BarIndex <= 1 on the
+original zone's touch record), exclude its ray.
 
-Left join ZRA <- ZB4. Pull CascadeState and TFConfluence only. Set UNKNOWN/-1 for unmatched. Keep first ZB4 match on duplicates. Keep all ZRA rows even if key is shared (print warning with count if > 1% of total).
+Print: total rays before filter, after filter, removal counts by
+reason (TF filter vs SBB filter).
 
-> CONFIRM: Only CascadeState and TFConfluence were pulled from ZB4. No scoring columns (ModeAssignment, QualityScore, ContextScore, TotalScore) present in merged data.
+### Step 5: Build tick-bar index mapping
 
-### Step 5: Compute derived columns
+For each touch, find the corresponding position in the 1-tick data
+by matching on DateTime. This maps each touch to a starting index
+in the tick data for simulation.
 
-- ZoneWidthTicks = (ZoneTop - ZoneBot) / tick_size
-- SBB_Label = "SBB" if ZoneBroken=1 AND (BreakBarIndex - BarIndex) <= 1, else "NORMAL"
-- Drop SourceChart and SourceStudyID
+Store as `TickBarIndex` — the row index in the 1-tick file where
+this touch occurs.
 
-> CONFIRM: SBB touches are labeled but NOT removed. All SBB_Label = 'SBB' rows remain in the dataset.
+Print match rate. Flag any touch with no tick data match (gap > 1 second).
 
-### Step 6: Join rotational bar data
+### Step 6: Build volume-bar index mapping
 
-For each touch, find the nearest bar where bar timestamp <= touch DateTime. Store as RotBarIndex (row index into parent period's bar data file). P1a and P1b touches both index into NQ_bardata_P1.csv.
+For each touch, confirm BarIndex maps to the correct row in the
+250-vol bar data (bar timestamp <= touch DateTime, nearest match).
 
-Print match rate and max timestamp gap. Flag any touch with gap > 60 seconds.
+This should be a passthrough since ZTE already provides BarIndex
+on the 250-vol chart. Verify, don't recompute.
 
-### Step 7: Split into sub-periods
+Print match rate.
 
-Read split rule from `_config/period_config.md`. For midpoint: find median DateTime per parent period, round to day boundary, assign Period labels.
+### Step 7: Join ray context to touches
 
-Print touch counts per sub-period.
+Build TouchID key on ZTE data. Left join ray context (filtered)
+onto touches. Result is one-to-many: each touch may have 0-N
+ray rows.
 
-> CONFIRM: Period boundaries determined from data (median DateTime), not hardcoded. Print the split dates.
+For touches with no rays after filtering: note as ray_count=0.
 
-### Step 8: Run verification checks
+Produce two outputs:
+- **Touch-level file:** one row per touch, with ray summary columns
+  (nearest_ray_dist, nearest_ray_side, ray_count, has_valid_ray)
+- **Ray detail file:** the filtered long-format ray data (for
+  detailed ray analysis in Prompt 0 Part A)
 
-Execute all checks from the Verification Checks section. Fail loudly if any check fails.
+### Step 8: Tag periods
 
-> CONFIRM: CascadeState contains UNKNOWN values for unmatched rows. These are valid and expected (<= 7 rows in P2).
+Using dates from `_config/period-config.md`, tag each touch as
+`calibration` or `holdout` based on its DateTime.
 
-SBB touches are NOT filtered. UNKNOWN cascade is valid.
+Print touch counts per role.
 
-### Step 9: Save output files
+### Step 9: Validation checks
 
-- 4 merged CSVs (one per sub-period) to `stages/01-data/output/zone_prep/`
-- Copy bar data files as NQ_bardata_P1.csv, NQ_bardata_P2.csv (unchanged pass-through)
-- Generate period_config.json
-- Generate data_preparation_report.md
+All must pass. Fail loudly on any failure.
 
-Bar data covers the full parent period (not split) because the simulator needs to walk past touch bars into subsequent bars.
+| Check | Criterion |
+|-------|-----------|
+| No nulls in key columns | TouchPrice, ZoneTop, ZoneBot, Reaction, Penetration non-null |
+| Valid TouchType | All values in {DEMAND_EDGE, SUPPLY_EDGE} |
+| Valid SourceLabel | All values in {15m, 30m, 60m, 90m, 120m, 240m, 360m, 480m, 720m} |
+| Valid CascadeState | All values in {PRIOR_HELD, NO_PRIOR, PRIOR_BROKE, UNKNOWN} |
+| Non-negative outcomes | Reaction >= 0 and Penetration >= 0 |
+| Zone ordering | ZoneTop > ZoneBot for all rows |
+| Date range | All rows within expected period boundaries |
+| Minimum sample | Calibration has >= 1000 touches |
+| Tick data coverage | >= 99% of touches have a tick bar match |
+| Volume bar coverage | >= 99% of touches have a volume bar match |
+
+### Step 10: Save output files
+
+All outputs go to `data/` with scaffold naming convention.
+
+| Output | Naming |
+|--------|--------|
+| Prepared touch data (one per role) | `zone-touch-NQ-touches-[role].csv` |
+| Filtered ray detail (one per role) | `zone-touch-NQ-rays-[role].csv` |
+| 1-tick bar data (passthrough) | Keep source name |
+| 250-vol bar data (passthrough) | Keep source name |
+| Preparation report | `zone-touch-NQ-data-prep-report.md` |
+
+Update `data/README.md` with the new file listing.
+
+---
+
+## Reporting Output
+
+### zone-touch-NQ-data-prep-report.md
+
+1. **File inventory:** all source files with row counts and date ranges
+2. **VP_RAY filter:** count removed per period
+3. **Ray filter:** counts before/after, removals by reason (TF, SBB)
+4. **Tick bar mapping:** match rate, gaps flagged
+5. **Volume bar mapping:** match rate
+6. **Ray join:** touches with 0/1/2/3+ valid rays
+7. **Distributions per role (calibration/holdout):**
+   - TouchType breakdown
+   - SourceLabel (TF) breakdown
+   - CascadeState breakdown
+   - SBB rate by TF
+   - ZoneWidthTicks stats (min, P25, median, P75, P90, max)
+   - TouchSequence distribution (1, 2, 3, 4, 5+)
+   - Ray availability rate
+8. **Period tagging:** touch counts per role
+9. **Validation results:** pass/fail for each check
 
 ---
 
 ## Anti-Patterns (never do these)
 
-- Do NOT filter SBB touches. They stay. Downstream decides.
-- Do NOT pull ZB4 scoring columns (ModeAssignment, QualityScore, ContextScore, TotalScore).
-- Do NOT hardcode date boundaries. Data determines splits.
-- Do NOT drop unmatched ZRA rows. They get UNKNOWN cascade and stay.
-- Do NOT reorder columns. Schema above is canonical.
+- Do NOT filter SBB touches from touch data. Label them, keep them. Downstream decides.
 - Do NOT hardcode tick_size, cost_ticks, or session times. Read from `_config/instruments.md`.
+- Do NOT hardcode date boundaries. Read from `_config/period-config.md`.
+- Do NOT include VP_RAY touches in output.
+- Do NOT include rays from zones with TF < 60 minutes in filtered ray output.
+- Do NOT include rays from SBB zones in filtered ray output.
+- Do NOT drop any ZTE columns except SourceChart and SourceStudyID.
 
 ---
 
 ## Self-Check (run before saving outputs)
 
-- [ ] All input files loaded with correct row counts
-- [ ] VP_RAY touches filtered before merge (count printed)
-- [ ] Match key includes SourceLabel (4-part key, not 3-part)
-- [ ] TouchPrice rounded to 2 decimals in key construction
-- [ ] Only CascadeState and TFConfluence pulled from ZB4
-- [ ] No ZB4 scoring columns in output
-- [ ] Unmatched ZRA rows retained with UNKNOWN cascade
-- [ ] SBB touches labeled but NOT filtered
+- [ ] All source files loaded with correct row counts
+- [ ] VP_RAY touches removed (count printed)
 - [ ] SourceChart and SourceStudyID dropped
-- [ ] RotBarIndex maps to parent period bar data file
-- [ ] Period split determined from data (not hardcoded)
-- [ ] Each sub-period has >= 500 touches
-- [ ] All sanity checks passed
-- [ ] period_config.json includes instrument, tick_size, parent references, bar_data_files
-- [ ] data_preparation_report.md documents all distributions and verification results
-- [ ] All 4 merged CSVs + 2 bar data files + config + report saved
-
----
-
-## Extensibility
-
-1. **New periods:** Accept any number of period pairs. Extend period_config.json accordingly.
-2. **New instruments:** tick_size is parameterized via instruments.md. Zone width calculation adapts.
-3. **Incremental updates:** Support per-period execution (re-run P2 merge without touching P1).
-4. **Different splits:** Support configurable split counts (2, 3, or no split) via period_config.md.
+- [ ] Ray data filtered: TF < 60m removed, SBB-origin removed (counts printed)
+- [ ] Tick bar index mapped for each touch (match rate printed)
+- [ ] Volume bar index verified (match rate printed)
+- [ ] Ray join complete: touch-level summary + ray detail file
+- [ ] Touches tagged as calibration or holdout from period-config
+- [ ] All validation checks passed
+- [ ] Output files saved to data/ with scaffold naming
+- [ ] data/README.md updated with new file listing
+- [ ] data_prep_report.md documents all distributions and checks
