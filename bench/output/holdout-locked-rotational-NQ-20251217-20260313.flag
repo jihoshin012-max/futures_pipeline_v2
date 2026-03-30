@@ -1,0 +1,8 @@
+locked: 2026-03-29
+archetype: rotational
+instrument: NQ
+variant: chop
+holdout: 2025-12-17 to 2026-03-13
+config: SD=10 HS=60 depth_1 MCS=2 chop<0.10 lb=3 250tick
+cycles: 10892
+result: PASS (pending formal verdict — statistical gates undefined)
