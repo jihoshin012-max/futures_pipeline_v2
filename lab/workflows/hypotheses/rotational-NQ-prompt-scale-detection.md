@@ -2,7 +2,7 @@
 
 > **Archetype:** rotational
 > **Instrument:** NQ
-> **Status:** active
+> **Status:** completed
 > **Created:** 2026-03-28
 > **Data:** `data/NQ-1tick-calibration.csv` (P1, 31.8M rows)
 

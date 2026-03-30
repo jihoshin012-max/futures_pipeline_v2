@@ -2,10 +2,10 @@
 
 > **Archetype:** rotational
 > **Instrument:** NQ
-> **Status:** draft
+> **Status:** frozen
 > **Created:** 2026-03-29
 > **Parent study:** `rotational-NQ-prompt-scale-detection.md`
-> **Related:** `rotational-NQ-prompt-trade-management.md` (shares Steps 0-1)
+> **Next:** Track B (`rotational-NQ-prompt-fade-confirmation.md`), then Track C (`rotational-NQ-prompt-trade-management-c.md`) — both depend on this prompt's outcome
 > **Data:** `data/NQ-1tick-calibration.csv` (P1), `data/NQ-1tick-holdout.csv` (P2)
 
 ---

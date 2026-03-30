@@ -1,11 +1,11 @@
-# In-Trade Management Signals — Experiment Prompt
+# Track C: In-Trade Management Signals — Experiment Prompt
 
 > **Archetype:** rotational
 > **Instrument:** NQ
 > **Status:** draft
 > **Created:** 2026-03-29
 > **Parent study:** `rotational-NQ-prompt-scale-detection.md`
-> **Related:** `rotational-NQ-prompt-entry-signals.md` (shares Steps 0-1)
+> **Depends on:** Track A (`rotational-NQ-prompt-entry-signals.md`) and Track B (`rotational-NQ-prompt-fade-confirmation.md`) — run both first. Update this prompt's baseline and test weeks with the winning entry config from A + B before executing.
 > **Data:** `data/NQ-1tick-calibration.csv` (P1), `data/NQ-1tick-holdout.csv` (P2)
 
 ---
@@ -152,10 +152,11 @@ Break-even stop is a fixed rule, not a feature-triggered action. It doesn't depe
 
 ## Baseline
 
-Same as parent study (SC-aligned aggregation):
-- **Config:** SD=10 HS=60 depth_1 MCS=2 + choppiness < 0.10 at lb=3
-- **P1 filtered:** 10,312 cycles, 82% WR, 18% SR, E[R]=$52.57
-- **P2 filtered:** 10,892 cycles, 82% WR, 18% SR, E[R]=$55.28
+Use the winning config from Track A + Track B (whatever survived). Update these numbers with the final entry-filtered P1 results before proceeding. The entry filters change the cycle population — different cycles, different WR/SR, different E[R]. Re-select test weeks from the new filtered distribution (rank weeks by filtered PnL, pick WEAKEST/LOW/MID/GOOD/BEST).
+
+**Track A winner (known):** chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0. P1: 6,624 cycles, 83% WR, 17% SR, E[R]=$63.22.
+
+**Track B winner:** TBD — update baseline after Track B completes. If Track B fails, use Track A numbers above.
 
 ## Locked files (DO NOT MODIFY)
 
@@ -210,7 +211,7 @@ Run instrumented sweep on 5 test weeks. Record per-bar snapshots with: price, cu
 - `lab/output/rotational-NQ-scale-detection/regime-direction-tagged-cycles.csv` (per-cycle)
 - `lab/output/rotational-NQ-scale-detection/regime-direction-intrade-bars.csv` (per-bar snapshots with price)
 
-If already completed for entry-signals prompt, reuse output.
+If Track A already ran Steps 0-1, reuse output only if Track A FAILED (baseline unchanged). If Track A SUCCEEDED, re-run Step 1 with the new entry filter active to generate snapshots of the updated cycle population.
 
 ### Step 2: In-trade correlation analysis
 
