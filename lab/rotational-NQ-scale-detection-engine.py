@@ -1106,6 +1106,83 @@ def _rolling_entropy(close, n, lookback, n_bins=10):
     return out
 
 
+# ---------------------------------------------------------------------------
+#  Entry & in-trade regime signals (Track A + B shared)
+# ---------------------------------------------------------------------------
+
+def compute_entry_signals(agg_bars, lookback=3):
+    """Compute directional + rate-of-change regime features on aggregated bars.
+
+    Returns dict of float64 arrays (one per agg bar):
+        signed_chop  — displacement/range with sign preserved [-1, 1]
+        dchop        — chop[i] - chop[i-1] (regime transition rate)
+        d2chop       — dchop[i] - dchop[i-1] (transition acceleration)
+        signed_slope — raw regression slope (points/bar, signed)
+        dr2          — r2[i] - r2[i-1]
+        dslope       — abs_slope[i] - abs_slope[i-1]
+    """
+    close = agg_bars["last"].astype(np.float64)
+    high = agg_bars["high"].astype(np.float64)
+    low = agg_bars["low"].astype(np.float64)
+    n = agg_bars["n"]
+
+    # Reuse existing functions for base signals
+    chop = _choppiness_ratio(high, low, close, n, lookback)  # unsigned
+    slope, r2 = _linreg_slope_r2(close, n, lookback)
+
+    # Signed choppiness: same as chop but preserves direction
+    signed_chop = _signed_choppiness(high, low, close, n, lookback)
+
+    # Rate-of-change signals
+    dchop = np.full(n, np.nan, dtype=np.float64)
+    d2chop = np.full(n, np.nan, dtype=np.float64)
+    dr2 = np.full(n, np.nan, dtype=np.float64)
+    dslope = np.full(n, np.nan, dtype=np.float64)
+
+    for i in range(1, n):
+        if not np.isnan(chop[i]) and not np.isnan(chop[i - 1]):
+            dchop[i] = chop[i] - chop[i - 1]
+        if not np.isnan(r2[i]) and not np.isnan(r2[i - 1]):
+            dr2[i] = r2[i] - r2[i - 1]
+        if not np.isnan(slope[i]) and not np.isnan(slope[i - 1]):
+            dslope[i] = abs(slope[i]) - abs(slope[i - 1])
+    for i in range(2, n):
+        if not np.isnan(dchop[i]) and not np.isnan(dchop[i - 1]):
+            d2chop[i] = dchop[i] - dchop[i - 1]
+
+    return {
+        "signed_chop": signed_chop,
+        "dchop": dchop,
+        "d2chop": d2chop,
+        "signed_slope": slope,   # slope is already signed
+        "dr2": dr2,
+        "dslope": dslope,
+        "choppiness": chop,      # include unsigned for filter
+        "slope_abs": np.where(np.isnan(slope), np.nan, np.abs(slope)),
+        "r2": r2,
+    }
+
+
+@nb.njit(cache=True)
+def _signed_choppiness(high, low, close, n, lookback):
+    """Signed choppiness: (close[i] - close[i-lb+1]) / summed_range.
+
+    Range [-1, 1]. Positive = upward displacement, negative = downward.
+    """
+    out = np.full(n, np.nan, dtype=np.float64)
+    for i in range(lookback - 1, n):
+        net_move = close[i] - close[i - lookback + 1]
+        summed_range = 0.0
+        for j in range(lookback):
+            idx = i - lookback + 1 + j
+            summed_range += high[idx] - low[idx]
+        if summed_range > 1e-12:
+            out[i] = net_move / summed_range
+        else:
+            out[i] = 0.0
+    return out
+
+
 def compute_regime_signals(agg_bars, lookback=5):
     """Compute all regime classifier features on aggregated bars.
 

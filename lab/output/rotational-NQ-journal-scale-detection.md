@@ -943,3 +943,363 @@ Verdict file: `bench/output/rotational-NQ-verdict-20251217-20260313-validated.js
 
 ---
 
+### 2026-03-30 — Track B: Fade Confirmation Signals
+
+## Track B Step 0: Select test weeks
+
+**Prompt:** `lab/workflows/hypotheses/rotational-NQ-prompt-fade-confirmation.md`
+**Baseline:** Track A winning config — SD=10 HS=60 depth_1 MCS=2 + chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0
+
+**Track A P2 verdict: PASS** (confirmed 2026-03-29)
+- P2: 6,927 cycles, 84% WR, 16% SR, E[R]=$70.40, PF=1.731
+- Improved over P1 ($63.22 → $70.40). No degradation.
+
+**Method:** Ran Track A config on full P1 (12 weeks). Ranked by filtered PnL. Selected WEAKEST/LOW/MID/GOOD/BEST.
+
+### P1 aggregate (verification)
+- Chop-only: 10,312 cycles, 82% WR, 18% SR, E[R]=$53.43 — matches frozen params
+- Track A filtered: 6,624 cycles, 83% WR, 17% SR, E[R]=$63.22 — matches frozen params
+
+### Test week selection
+
+| Category | Week | Cycles | WR | SR | PnL | E[R] |
+|----------|------|--------|-----|-----|------|------|
+| WEAKEST | W40 | 279 | 80% | 20% | $10,461 | $37.49 |
+| LOW | W49 | 469 | 82% | 18% | $25,429 | $54.22 |
+| MID | W44 | 415 | 84% | 16% | $28,984 | $69.84 |
+| GOOD | W46 | 669 | 83% | 17% | $40,589 | $60.67 |
+| BEST | W47 | 1,394 | 85% | 15% | $106,722 | $76.56 |
+
+**Notes:**
+- W47 has 43% of test cycles (1,394/3,226). Per-week breakdown is the primary view to avoid W47 dominating pooled stats.
+- WEAKEST week (W40) has only 279 cycles — smallest test week. SR is 20% (highest in set).
+- All 12 P1 weeks are positive under Track A filter (range: $10K–$107K).
+
+**Data:** `lab/output/rotational-NQ-scale-detection/fade-confirm-step0-week-selection.csv`
+**Script:** `lab/rotational-NQ-scale-detection-step16.py`
+Runtime: 288s
+
+---
+
+## Track B Step 1: Compute and tag fade confirmation features
+
+**Method:** Ran Track A filter on full P1, extracted 5 test weeks, computed 5 fade confirmation features at each entry from previous completed 250-tick bars.
+
+**Features computed:** fade_confirm, range_decay_1, avg_range_decay, flow_confirm, direction_bars, fade_speed.
+
+All features use COMPLETED bars prior to the entry bar (no look-ahead). Entry bar is incomplete at entry time.
+
+**3,226 cycles tagged** across 5 test weeks.
+
+**Script:** `lab/rotational-NQ-scale-detection-step17.py`
+**Data:** `lab/output/rotational-NQ-scale-detection/fade-confirm-tagged-cycles.csv`
+Runtime: 262s
+
+---
+
+## Track B Step 2: Entry correlation analysis
+
+**Kill gate: PASS** — 5 of 6 features show SR spread > 5pt.
+
+### Feature signal strength (pooled, 3,226 cycles)
+
+| Feature | SR spread | E[R] spread | Signal? | Direction vs hypothesis |
+|---------|-----------|-------------|---------|------------------------|
+| **fade_confirm** | 23.4pt | $192 | **Strong** | **INVERTED** — low outperforms high |
+| **fade_speed** | 19.7pt | $161 | **Strong** | **INVERTED** — negative outperforms positive |
+| **flow_confirm** | 15.2pt | $124 | **Strong** | **INVERTED** — negative (against fade) outperforms positive |
+| **direction_bars** | 11.9pt | $98 | **Strong** | **INVERTED** — 0 bars outperforms 2-3 bars |
+| avg_range_decay | 5.1pt | $42 | Moderate | Non-monotonic, peak at 1.0-1.1 |
+| range_decay_1 | 3.0pt | $23 | Marginal | Non-monotonic, noisy |
+
+### Critical finding: ALL hypotheses inverted
+
+The prompt hypothesized that fades work better when the pullback is exhausting (stalling, reversing, buyers returning). **The data shows the opposite:**
+
+- **fade_confirm < 0.3** (entry near bottom of prev bar for LONG): 12% SR, $97.79 E[R]
+- **fade_confirm >= 0.7** (entry near top): 36% SR, -$94.34 E[R]
+- **fade_speed < -1.0** (pullback still accelerating against fade): 8% SR, $138.92 E[R]
+- **fade_speed >= 1.0** (pullback reversing): 27% SR, -$21.73 E[R]
+- **flow_confirm < -0.3** (volume against fade direction): 10% SR, $116.92 E[R]
+- **flow_confirm >= 0.3** (volume in fade direction): 24% SR, $2.80 E[R]
+- **direction_bars = 0** (no bars in fade direction): 12% SR, $101.94 E[R]
+- **direction_bars = 3** (all 3 bars in fade direction): 24% SR, $4.35 E[R]
+
+### Interpretation [SPECULATION]
+
+Possible explanation: entering when the pullback has displaced forcefully may leave more room for mean reversion. Entering when already stalling may mean partial reversion has already occurred. This is a post-hoc narrative — not proven by the data above.
+
+flow_confirm showed signal here but not in Steps 5-6. [SPECULATION] One possible explanation: Steps 5-6 tested whether volume predicted the full trade outcome (continuous), while this tests entry gating (binary pass/fail). The prediction targets differ, which may explain the divergence — but this has not been tested.
+
+### Per-week consistency
+
+All 4 strong features show consistent direction across 4 of 5 weeks. W49 (LOW) is the exception — flow_confirm and direction_bars are flat on that week. W40 (WEAKEST) has small samples at some feature extremes but directionally consistent.
+
+### Next step
+
+Step 3: Redundancy check. Candidates likely redundant:
+- fade_confirm and direction_bars (both capture "price position relative to fade direction")
+- fade_speed and flow_confirm (both capture "momentum state at entry")
+
+**Scripts:** `lab/rotational-NQ-scale-detection-step17.py` (Step 1), `lab/rotational-NQ-scale-detection-step18.py` (Step 2)
+
+---
+
+## Track B Step 3: Redundancy check
+
+**Method:** Pairwise Pearson and Spearman correlations between the 4 strong features, plus conditional value analysis.
+
+### Correlation matrix (Spearman rho)
+
+| | fade_confirm | flow_confirm | direction_bars | fade_speed |
+|---|---|---|---|---|
+| fade_confirm | 1.00 | 0.12 | 0.07 | 0.20 |
+| flow_confirm | | 1.00 | 0.60 | **0.72** |
+| direction_bars | | | 1.00 | **0.67** |
+| fade_speed | | | | 1.00 |
+
+### Structure
+
+- **fade_confirm** is nearly independent of all others (rho 0.07–0.20). Captures a different dimension: where in the previous bar's range the entry price falls.
+- **flow_confirm, direction_bars, fade_speed** form a correlated cluster (rho 0.60–0.72). All three capture momentum/direction state of recent bars before entry.
+
+### Within-cluster ranking (from Step 2)
+
+| Feature | SR spread | E[R] fav | E[R] unfav | Spread |
+|---------|-----------|----------|------------|--------|
+| fade_speed | 19.7pt | $109.90 | -$14.76 | $124.66 |
+| flow_confirm | 15.2pt | $116.30 | -$4.95 | $121.25 |
+| direction_bars | 11.9pt | $92.85 | $11.45 | $81.40 |
+
+fade_speed is strongest. flow_confirm is close but rho=0.72 with fade_speed — mostly redundant. direction_bars is weakest and correlated with both.
+
+### Conditional independence test
+
+When fade_speed is favorable (< 0.0), adding flow_confirm favorable only improves E[R] from $109.90 to $120.75 — a $10.85 marginal gain. But the "fade_speed favorable + flow_confirm unfavorable" cell has only 31 cycles — too small to be reliable. The high correlation means both features rarely disagree.
+
+### Decision
+
+**Survivors: fade_confirm + fade_speed**
+- rho = 0.20 (nearly independent)
+- fade_confirm: 23.4pt SR spread (strongest single feature)
+- fade_speed: 19.7pt SR spread (strongest in momentum cluster)
+- Together they capture two independent dimensions: price position (where in bar range) and momentum state (how fast price is moving)
+
+**Killed:**
+- flow_confirm: rho=0.72 with fade_speed, weaker. Volume's third test — signal exists but is redundant with price-based fade_speed.
+- direction_bars: rho=0.67 with fade_speed, weakest of the cluster.
+- range_decay_1 / avg_range_decay: marginal signal from Step 2 (3.0pt / 5.1pt SR spread).
+
+**Script:** `lab/rotational-NQ-scale-detection-step19.py`
+
+---
+
+## Track B Step 4: Retroactive filter
+
+**Method:** Sweep thresholds on fade_confirm and fade_speed (survivors), compute PnL for cycle subsets. No sim re-run.
+
+### Best single-feature results (retroactive)
+
+| Filter | Cycles | Ret | E[R] | All weeks improved |
+|--------|--------|-----|------|--------------------|
+| fade_confirm < 0.5 | 2,655 | 82% | $89.01 | Yes |
+| fade_confirm < 0.6 | 2,789 | 86% | $87.37 | Yes |
+| fade_confirm < 0.7 | 2,908 | 90% | $83.28 | Yes |
+| fade_speed < 0.0 | 2,022 | 63% | $109.90 | Yes |
+
+### Best combos (retroactive)
+
+| Filter | Cycles | Ret | E[R] | All weeks improved |
+|--------|--------|-----|------|--------------------|
+| fc<0.7 + fs<0.3 | 2,184 | 68% | $103.10 | Yes |
+| fc<0.7 + fs<0.5 | 2,321 | 72% | $100.40 | Yes |
+
+fade_confirm alone at 0.5-0.7 is the sweet spot for retroactive. Combined filters push below H2 proportional gate.
+
+**Data:** `lab/output/rotational-NQ-scale-detection/fade-confirm-retroactive.csv`
+**Script:** `lab/rotational-NQ-scale-detection-step20.py`
+
+---
+
+## Track B Step 5: Live sim (5 test weeks)
+
+**Method:** Wire fade_confirm (and optionally fade_speed) as entry gate after chop + dR2/dSlope. Actual sim re-run.
+
+### Results (full P1, live sim)
+
+| Filter | Cycles | Ret | WR | SR | E[R] | PnL | All wks |
+|--------|--------|-----|-----|-----|------|-----|---------|
+| Track A (baseline) | 6,624 | 100% | 83% | 17% | $63.22 | $418,785 | -- |
+| fc<0.4 | 6,496 | 98% | 85% | 15% | $78.16 | $507,737 | Yes |
+| fc<0.5 | 6,560 | 99% | 85% | 15% | $75.55 | $495,586 | Yes |
+| fc<0.6 | 6,601 | 100% | 85% | 15% | $73.62 | $485,973 | Yes |
+| fc<0.7 | 6,616 | 100% | 84% | 16% | $70.27 | $464,905 | Yes |
+| fc<0.7+fs<0.3 | 5,431 | 82% | 87% | 13% | $91.08 | $494,646 | Yes |
+| fc<0.7+fs<0.5 | 5,661 | 85% | 86% | 14% | $87.88 | $497,472 | Yes |
+| fc<0.5+fs<0.5 | 5,604 | 85% | 87% | 13% | $90.63 | $507,917 | W40 fails |
+
+### Live sim vs retroactive
+
+Live sim retention is much higher than retroactive (98% vs 82% for fc<0.5). Same pattern as chop filter and Track A — skipping entries resets watch phase, creating new entry opportunities that pass the filter.
+
+### Candidate selection for Step 6
+
+**Primary: fc<0.4** — 98% retention, +24% E[R] ($78.16), all weeks improved, simplest (one additional threshold). Well above H2 gate.
+
+**Secondary: fc<0.7+fs<0.3** — 82% retention, +44% E[R] ($91.08), all weeks improved. Close to H2 gate (5,431 cycles vs 5,000 minimum). Higher complexity (two features).
+
+**Data:** `lab/output/rotational-NQ-scale-detection/fade-confirm-livesim.csv`
+**Script:** `lab/rotational-NQ-scale-detection-step21.py`
+Runtime: 499s
+
+---
+
+## Track B Step 6: Full P1 validation
+
+**Method:** Run both candidates on full P1 (12 weeks). Per-week breakdown required.
+
+### fc<0.4 — full P1 per-week
+
+| Week | BL_N | F_N | Ret | BL_ER | F_ER | dER | dER% |
+|------|------|-----|-----|-------|------|-----|------|
+| W39 | 288 | 285 | 99% | $53.81 | $66.66 | +$12.85 | +24% |
+| W40 | 279 | 283 | 101% | $37.49 | $42.99 | +$5.49 | +15% |
+| W41 | 484 | 480 | 99% | $55.79 | $77.37 | +$21.58 | +39% |
+| W42 | 719 | 727 | 101% | $63.30 | $74.14 | +$10.84 | +17% |
+| W43 | 390 | 384 | 98% | $50.57 | $60.18 | +$9.61 | +19% |
+| W44 | 415 | 399 | 96% | $69.84 | $87.98 | +$18.14 | +26% |
+| W45 | 608 | 601 | 99% | $61.57 | $74.93 | +$13.36 | +22% |
+| W46 | 669 | 659 | 99% | $60.67 | $71.01 | +$10.34 | +17% |
+| W47 | 1394 | 1322 | 95% | $76.56 | $92.60 | +$16.04 | +21% |
+| W48 | 383 | 370 | 97% | $75.28 | $92.68 | +$17.40 | +23% |
+| W49 | 469 | 471 | 100% | $54.22 | $88.89 | +$34.67 | +64% |
+| W50 | 526 | 515 | 98% | $61.97 | $71.70 | +$9.73 | +16% |
+
+**12/12 weeks improved.** E[R] improvement range: +$5.49 to +$34.67. No week degraded.
+
+Aggregate: 6,496 cycles (98% ret), 85% WR, 15% SR, E[R]=$78.16 (+24% over Track A), PnL=$507,737.
+
+### fc<0.7+fs<0.3 — full P1
+
+11/12 weeks improved. W48 degraded by -$0.23 (essentially flat). Aggregate: 5,431 cycles (82% ret), 87% WR, 13% SR, E[R]=$91.08 (+44%).
+
+### Decision: fc<0.4 is the winner
+
+- 12/12 weeks vs 11/12
+- 98% retention vs 82% (well above H2 gate)
+- Simpler (one feature vs two)
+- Lower E[R] ($78 vs $91) but higher total PnL ($508K vs $495K due to more cycles)
+
+---
+
+## Track B Step 7: Sanity check
+
+**Method:** 10 random filters at matching retention rate for each candidate.
+
+### fc<0.4
+
+| | E[R] | N |
+|---|---|---|
+| fc<0.4 | $78.16 | 6,496 |
+| Random avg | $3.33 | 18,063 |
+| Random max | $5.56 | — |
+| Margin | $72.60 | — |
+
+**PASS** — beats all 10 random seeds.
+
+### fc<0.7+fs<0.3
+
+| | E[R] | N |
+|---|---|---|
+| fc<0.7+fs<0.3 | $91.08 | 5,431 |
+| Random avg | $2.78 | 17,324 |
+| Random max | $4.81 | — |
+| Margin | $86.27 | — |
+
+**PASS** — beats all 10 random seeds.
+
+### Kill gate: P1 improvement >= 5%
+
+- fc<0.4: +23.6% — **PASS**
+- fc<0.7+fs<0.3: +44.1% — **PASS**
+
+**Script:** `lab/rotational-NQ-scale-detection-step22.py`
+Runtime: 792s
+
+---
+
+## Track B Step 8: Handoff to bench
+
+**Winner:** fade_confirm < 0.40
+
+**Full filter stack:**
+1. choppiness < 0.10 at lb=3 on 250-tick bars (chop filter)
+2. dR2 <= -0.40 at lb=3 (Track A entry signal)
+3. dSlope <= -2.0 at lb=3 (Track A entry signal)
+4. fade_confirm < 0.40 (Track B — this study)
+
+**P1 summary:** 6,496 cycles, 85% WR, 15% SR, E[R]=$78.16, 98% retention vs Track A, 12/12 weeks improved.
+
+**Frozen params:** `lab/output/rotational-NQ-fade-confirm-params-frozen.json`
+**Verify report:** `lab/output/rotational-NQ-fade-confirm-verify-report.md`
+
+**What bench needs to test:**
+- P2 holdout (ONE SHOT) with full 4-filter stack
+- Stress: threshold sensitivity (fc threshold 0.2-0.6), slippage, Monte Carlo, WR compression
+- Verdict against statistical gates
+
+**Alternative candidate (not promoted):** fc<0.7 + fade_speed<0.3 — higher E[R] ($91.08) but 11/12 weeks, 82% retention, more complex. If fc<0.4 alone fails P2, this could be revisited but would need its own P2 run.
+
+---
+
+## Track B P2 Holdout Validation (ONE SHOT)
+
+**Config:** SD=10 HS=60 depth_1 MCS=2 + chop<0.10 lb=3 + dR2<=-0.40 + dSlope<=-2.0 + fade_confirm<0.40
+**Data:** NQ-1tick-holdout.csv (2025-12-17 to 2026-03-13)
+
+### Results
+
+| | Cycles | WR | SR | PF | E[R] | Total PnL |
+|---|---|---|---|---|---|---|
+| Track A P2 (baseline) | 6,927 | 84% | 16% | 1.73 | $70.40 | $487,638 |
+| **+ fade_confirm <0.40** | **6,742** | **86%** | **14%** | **1.91** | **$80.55** | **$543,110** |
+
+**P2 improvement:** +$10.15 E[R] (+14.4%), 97% retention. PF improved from 1.73 to 1.91.
+
+### Per-week breakdown (P2)
+
+11/13 weeks improved. W05 and W09 degraded by -$1.26 and -$1.44 respectively (essentially flat). Zero negative weeks for both baseline and filtered.
+
+### Verdict: PASS
+
+All hard and soft gates passed:
+
+| Gate | Threshold | Observed | Result |
+|---|---|---|---|
+| H1 PF | >= 1.20 | 1.91 | PASS |
+| H2 Cycles | >= 5,000 | 6,742 | PASS |
+| H3 Serial corr | < 2/sqrt(N) | all ok | PASS |
+| H4 Bootstrap P5 | > $0 | $505,522 | PASS |
+| H5 Kelly | <= 0.50 | 0.41 | PASS |
+| S1 Sharpe | >= 1.25 | 21.06 | PASS |
+| S4 WR headroom | >= 5% | 12% | PASS |
+| S5 PF @ 2t slip | >= 1.0 | 1.58 | PASS |
+
+### Cross-period stability
+
+| | P1 | P2 | Delta |
+|---|---|---|---|
+| E[R] | $78.16 | $80.55 | +$2.39 (+3.1%) |
+| WR | 85% | 86% | +1pt |
+| SR | 15% | 14% | -1pt |
+| PF | — | 1.91 | — |
+| Retention | 98% | 97% | -1pt |
+
+P2 improved over P1. No degradation. This is the third consecutive filter in the stack (chop, entry-signals, fade-confirm) that held or improved out of sample.
+
+**Verdict file:** `bench/output/rotational-NQ-fade-confirm-verdict-20251217-20260313-validated.json`
+**Stress report:** `bench/output/rotational-NQ-fade-confirm-stress-suite-20251217-20260313.md`
+**Holdout lock:** `bench/output/holdout-locked-rotational-NQ-fade-confirm-20251217-20260313.flag`
+
+---
+

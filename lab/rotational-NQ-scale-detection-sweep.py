@@ -199,10 +199,14 @@ def run_sim_filtered(bars: dict, step_dist: float, hard_stop: float,
                      signal_arrays: dict | None = None,
                      filter_fn=None,
                      gate_adds: bool = False,
-                     on_cycle_exit=None) -> list[dict]:
+                     on_cycle_exit=None,
+                     on_bar_in_trade=None) -> list[dict]:
     """Forked from lp_sweep.py run_sim() with signal filter injection.
 
     When filter_fn is None, produces identical output to the original.
+    on_bar_in_trade: optional callback(bar_idx, cycle_id, bar_offset, price,
+                     direction, pnl_ticks, mfe_ticks, mae_ticks) called at
+                     each bar while in position. None = no-op.
     """
     n = bars["n"]
     last = bars["last"]
@@ -327,6 +331,11 @@ def run_sim_filtered(bars: dict, step_dist: float, hard_stop: float,
             else: exc = (avg_entry - price) / tick_size
             if exc > c_mfe: c_mfe = exc
             if -exc > c_mae: c_mae = -exc
+            # In-trade bar callback
+            if on_bar_in_trade is not None:
+                cur_pnl = exc * abs(pos_qty)
+                on_bar_in_trade(i, cycle_id, i - c_start_bar, price,
+                                direction, cur_pnl, c_mfe, c_mae)
 
         if pos_qty != 0 and hard_stop > 0.0:
             if pos_qty > 0: unreal = (avg_entry - price) / tick_size
