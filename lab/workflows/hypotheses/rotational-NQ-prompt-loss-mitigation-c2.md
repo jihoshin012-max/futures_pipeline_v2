@@ -2,7 +2,7 @@
 
 > **Archetype:** rotational
 > **Instrument:** NQ
-> **Status:** draft
+> **Status:** FAILED (2026-03-30). All 4 approaches dead: HS sweep (HS=60 optimal), session context (no signal), adaptive stop (net negative), partial profit (break-even kills reversals)
 > **Created:** 2026-03-30
 > **Parent study:** `rotational-NQ-prompt-scale-detection.md`
 > **Predecessor:** Track C (`rotational-NQ-prompt-trade-management-c.md`) — FAILED. Mid-trade signals did not differentiate winners from losers in time. This prompt takes a different approach.
