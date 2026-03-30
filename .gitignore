@@ -14,3 +14,4 @@ data/*.txt
 lab/output/*-raw.csv
 lab/output/rotational-NQ-results-baseline-cycles.csv
 lab/output/rotational-NQ-scale-detection/NQ_calibration_1day.csv
+lab/output/rotational-NQ-scale-detection/regime-direction-intrade-bars.csv
