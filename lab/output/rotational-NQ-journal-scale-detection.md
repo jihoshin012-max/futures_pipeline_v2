@@ -1303,3 +1303,338 @@ P2 improved over P1. No degradation. This is the third consecutive filter in the
 
 ---
 
+### 2026-03-30 — Track C: In-Trade Management Signals
+
+## Track C Step 0: Select test weeks + verify instrumentation
+
+**Prompt:** `lab/workflows/hypotheses/rotational-NQ-prompt-trade-management-c.md`
+**Baseline:** Track A+B combined — SD=10 HS=60 depth_1 MCS=2 + chop<0.10 + dR2<=-0.40 + dSlope<=-2.0 + fade_confirm<0.40
+
+**Method:** Ran A+B combined config on full P1 (12 weeks). Ranked by filtered PnL. Selected WEAKEST/LOW/MID/GOOD/BEST.
+
+### P1 aggregate (verification)
+- Track A only: 6,624 cycles, 83% WR, 17% SR, E[R]=$63.22 — matches frozen params
+- Track A+B combined: 6,496 cycles, 85% WR, 15% SR, E[R]=$78.16 — matches frozen params
+
+### Gross loss breakdown
+
+**100% of gross losses come from HARD_STOPs.** Every reversal cycle is a win.
+
+| Exit type | Count | Avg PnL | Total PnL |
+|-----------|-------|---------|-----------|
+| HARD_STOP | 963 | -$609.15 | -$586,616 |
+| REVERSAL (wins) | 5,515 | +$198.57 | +$1,095,110 |
+| REVERSAL (losses) | 0 | — | — |
+| EOD_FLATTEN | 18 | -$42.06 | -$757 |
+
+Prompt claimed each stop costs ~$600 (60 ticks × $5 × 2 contracts). Observed avg is -$609.15 — close but not exactly $600 because the average entry price is the average of d0 and d1 entries (not the d0 price alone), and some stops exit at slightly different tick levels. The 15% SR × -$609 avg loss = -$91/cycle stop cost spread across all cycles, vs +$199 avg win. If management can cut the avg stop loss from $609 to ~$400, E[R] would increase by ~$31 (from $78 to ~$109).
+
+### Test week selection
+
+| Category | Week | Cycles | WR | SR | PnL | E[R] |
+|----------|------|--------|-----|-----|------|------|
+| WEAKEST | W40 | 283 | 81% | 19% | $12,166 | $42.99 |
+| LOW | W48 | 370 | 87% | 13% | $34,292 | $92.68 |
+| MID | W41 | 480 | 85% | 15% | $37,137 | $77.37 |
+| GOOD | W46 | 659 | 84% | 16% | $46,794 | $71.01 |
+| BEST | W47 | 1,322 | 87% | 13% | $122,412 | $92.60 |
+
+**Notes:**
+- W47 has 27% of test cycles (1,322/4,975 across 5 weeks). Per-week breakdown is primary view to avoid W47 dominating pooled stats.
+- WEAKEST week (W40) has only 283 cycles and highest SR (19%) — small sample, most stop-heavy.
+- W48 has moved from "GOOD" in Track B to "LOW" here because the full A+B filter changes the PnL ranking. W48's E[R] is high ($92.68) but cycle count is low (370).
+- All 12 P1 weeks are positive under A+B filter (range: $12K–$122K).
+
+### Instrumentation verification
+- `on_bar_in_trade` callback: PASS — 7,438,235 in-trade bar records across 6,496 cycles.
+- Cycle identity: PASS — all 6,496 cycles match with and without callback.
+- Callback fields: bar_idx, cycle_id, bar_offset, price, direction, pnl_ticks, mfe_ticks, mae_ticks.
+- Bars per cycle: min=302, max=19,504, median=2,399 (1-tick resolution — ~12-77 250-tick agg bars).
+- Regime signals (agg-bar level): >99.9% valid for all 6 features.
+
+**Data:** `lab/output/rotational-NQ-scale-detection/trade-mgmt-step0-week-selection.csv`
+**Script:** `lab/rotational-NQ-scale-detection-step23.py`
+Runtime: 374s
+
+---
+
+## Track C Step 1: Compute and tag
+
+**Method:** Ran A+B combined on full P1 with `on_bar_in_trade` callback, downsampled to 250-tick agg-bar resolution. Filtered to 5 test weeks. Captured per-bar snapshots with 9 regime features + raw trade data.
+
+**Output:** 3,114 cycles (451 HARD_STOP, 2,656 REVERSAL, 7 EOD). 14,641 agg-bar snapshots.
+- Median 3 agg bars per cycle (min=1, max=69). Most trades are short at SD=10.
+- Per-week metrics match Step 0 (verified).
+
+**Data:**
+- `lab/output/rotational-NQ-scale-detection/trade-mgmt-tagged-cycles.csv`
+- `lab/output/rotational-NQ-scale-detection/trade-mgmt-intrade-bars.csv`
+
+**Script:** `lab/rotational-NQ-scale-detection-step24.py`
+Runtime: 347s
+
+---
+
+## Track C Step 2: In-trade correlation analysis
+
+**Kill gate: PASS** — 9 features diverge with |d|>=0.3 at last bar. Lead time >= 3 agg bars for 4 features.
+
+### Feature divergence at last bar before exit (Cohen's d)
+
+| Feature | Cohen's d | Stop mean | Rev mean | Direction |
+|---------|-----------|-----------|----------|-----------|
+| **mae_proximity** | **+3.91** | 1.005 | 0.296 | Stops are at the stop level |
+| **signed_chop_vs_pos** | **-2.78** | -0.366 | 0.201 | Stops have chop against position |
+| **signed_slope_vs_pos** | **-2.23** | -5.520 | 2.714 | Stops have slope against position |
+| **mfe_rate** | **-1.60** | 3.50 | 18.84 | Stops have low MFE per bar |
+| **mae_increment** | **+1.34** | 11.75 | 2.24 | Stops have high new-worst per bar |
+| **mfe_retracement** | **+1.19** | 5.43 | 0.03 | Stops gave back all MFE |
+| r2 | +0.80 | 0.817 | 0.551 | Stops have higher R2 (trending) |
+| choppiness | +0.77 | 0.374 | 0.239 | Stops have higher chop (displaced) |
+| dr2 | weak | 0.057 | 0.037 | No clear signal — flips direction across weeks |
+| dslope | weak | 0.997 | 0.184 | Inconsistent across weeks |
+
+### Direction test (Analysis 3 — regime signals at agg_bar_offset=1)
+
+**Both signed_chop_vs_pos and signed_slope_vs_pos confirm the intuitive direction** — negative values (against position) predict stops. This is NOT inverted like Track B's entry findings. At entry, strong opposing momentum was favorable (mean reversion fuel). But mid-trade, opposing momentum means the trade is losing — the position is already established and opposing displacement hurts it directly.
+
+| Feature | LOW tercile SR | HIGH tercile SR | Spread | Direction |
+|---------|---------------|-----------------|--------|-----------|
+| signed_chop_vs_pos | **35%** | 4% | **31pt** | LOW predicts stops |
+| signed_slope_vs_pos | **33%** | 3% | **30pt** | LOW predicts stops |
+| dr2 | 18% | 20% | 2pt | No signal |
+| dslope | 17% | 22% | 5pt | Weak |
+| r2 | 17% | 20% | 3pt | No signal |
+| choppiness | 15% | 21% | 6pt | Weak |
+
+**Critical finding: regime signals are NOT inverted for in-trade use.** signed_chop and signed_slope show 30pt+ SR spreads in the intuitive direction (against position = bad). This makes sense: at entry, the strategy benefits from entering against strong momentum (Track B). But once IN the trade, continued momentum against you is genuinely bad — you're losing money.
+
+dr2 and dslope showed no meaningful signal mid-trade (2-5pt spread). These were the Track A entry signals — they predict entry quality, not in-trade trajectory.
+
+### Feature trajectory by agg bar offset
+
+Key pattern: **trade-behavior signals diverge earliest and strongest**.
+
+- mae_proximity: diverges from offset=1 (d=0.31), grows to d=0.83 by offset=3
+- signed_chop_vs_pos: diverges from offset=1 (d=-0.32), grows to d=-1.03 by offset=3
+- mae_increment: diverges from offset=2 (d=0.46), peaks at d=0.75 by offset=3
+- mfe_rate: diverges from offset=3 (d=-0.55)
+
+### Lead time
+
+Median stopped cycle lasts 8 agg bars. Divergence onset:
+
+| Feature | First divergence | Median stop | Lead time |
+|---------|-----------------|-------------|-----------|
+| mae_proximity | offset=1 | bar 8 | **7 bars** |
+| signed_chop_vs_pos | offset=1 | bar 8 | **7 bars** |
+| mae_increment | offset=2 | bar 8 | **6 bars** |
+| mfe_rate | offset=3 | bar 8 | **5 bars** |
+
+At ~10-30 seconds per 250-tick bar, 5-7 bars = 50-210 seconds of lead time. Well above the 3-bar minimum.
+
+### Per-week consistency
+
+mae_proximity and signed_chop_vs_pos show consistent divergence across all 5 test weeks:
+- mae_proximity delta: +0.70 to +0.73 (extremely consistent)
+- signed_chop_vs_pos delta: -0.50 to -0.73 (consistent, WEAKEST week has strongest signal)
+- mae_increment delta: +7.4 to +10.6 (consistent)
+- dr2 and dslope: flip sign across weeks (confirming they're not useful mid-trade)
+
+### Feature ranking for Track C
+
+**Tier 1 (strong, early, consistent):**
+1. signed_chop_vs_pos — d=-2.78, diverges at offset=1, 31pt SR spread in terciles, consistent across weeks
+2. mae_proximity — d=+3.91 (highest), diverges at offset=1, but partly tautological (stops approach stop level by definition)
+3. signed_slope_vs_pos — d=-2.23, 30pt SR spread, highly correlated with signed_chop_vs_pos (likely redundant)
+
+**Tier 2 (strong at last bar, slower lead):**
+4. mfe_rate — d=-1.60, diverges at offset=3
+5. mae_increment — d=+1.34, diverges at offset=2
+6. mfe_retracement — d=+1.19 (likely correlated with mae_proximity)
+
+**Not useful mid-trade:**
+- dr2, dslope: weak, inconsistent across weeks
+- r2, choppiness: moderate effect size but no clear tercile separation
+
+**Scripts:** `lab/rotational-NQ-scale-detection-step24.py` (Step 1), `lab/rotational-NQ-scale-detection-step25.py` (Step 2)
+**Data:** `trade-mgmt-tagged-cycles.csv`, `trade-mgmt-intrade-bars.csv`
+
+---
+
+## Track C Step 3: Application mapping + redundancy check
+
+**Method:** Pairwise Spearman correlations at agg_bar_offset=1 (2,500 cycles with valid data).
+
+### Correlation matrix
+
+| | signed_chop | signed_slope | mae_prox | mfe_rate | mae_incr | mfe_retrace |
+|---|---|---|---|---|---|---|
+| signed_chop_vs_pos | 1.00 | **0.98** | -0.62 | 0.64 | **-0.74** | **-0.74** |
+| signed_slope_vs_pos | | 1.00 | -0.59 | 0.64 | **-0.72** | **-0.73** |
+| mae_proximity | | | 1.00 | -0.43 | 0.65 | 0.49 |
+| mfe_rate | | | | 1.00 | -0.60 | **-0.77** |
+| mae_increment | | | | | 1.00 | 0.68 |
+| mfe_retracement | | | | | | 1.00 |
+
+### Redundancy decisions
+
+1. **signed_chop_vs_pos = signed_slope_vs_pos** (rho=0.978). Keep only signed_chop_vs_pos (stronger d, simpler).
+2. **mfe_rate = mfe_retracement** (rho=-0.77). Keep only mae_proximity for trade-health (simpler, stronger d=+3.91).
+3. **Regime and trade-behavior are correlated** (rho 0.6-0.74) but diverge at different offsets. Regime (signed_chop) diverges at offset=1; trade-behavior (mae_increment) diverges at offset=2. A compound trigger could add value.
+
+### Feature-to-action mapping
+
+| Action | Primary feature | Compound/support | Notes |
+|--------|----------------|------------------|-------|
+| **Early exit** | signed_chop_vs_pos < thresh | + mae_proximity > thresh | Regime signal + trade-health confirmation |
+| **Skip add** | mae_increment > thresh at add bar | mfe_rate < thresh | Skip martingale when hitting new worsts |
+| **Tighten stop** | choppiness > thresh | — | Weak signal (d=0.77), may fail Step 4 |
+| **Break-even stop** | mfe_ticks > N | — | Mechanical rule, no feature needed |
+
+### Cross-group correlation concern
+
+signed_chop_vs_pos is correlated with mae_increment (rho=-0.74). This means early exit and skip-add triggers may fire on overlapping cycles. If both actions target the same losing trades, combining them won't produce additive benefit. Step 4 must test each action independently first.
+
+**Script:** `lab/rotational-NQ-scale-detection-step26.py`
+
+---
+
+## Track C Step 4: Loss replay analysis
+
+**Method:** For each management action, replayed all 3,114 cycles in 5 test weeks. Computed what-if PnL under each action vs actual PnL. Net benefit must be positive on ALL weeks.
+
+### Early exit: FAILED
+
+All threshold combinations produced negative net benefit. The signal fires on ~100% of stops (excellent detection) but also fires on 15-28% of winners (too aggressive). Cost of cutting winners exceeds savings on stops.
+
+Best config (chop<-0.30, mae_prox>0.50): avg -$670/week. Winner-touch rate 15%.
+
+**Kill criterion: winner-touch rate > 20% on most configs.** Even the best configs are net negative. The signed_chop signal is highly predictive at the LAST bar, but it fires too early — before it's clear whether the trade will stop or reverse. [OPINION] The regime signal correlates too strongly with trade-behavior signals (rho 0.6-0.74 from Step 3). By the time signed_chop diverges meaningfully, mae_proximity has already risen — and the trade-behavior signal is what actually drives the outcome prediction, not the regime signal.
+
+### Skip add: PASSED (all 6 thresholds positive on all weeks)
+
+| mae_incr > | Avg net/week | Fire rate | All weeks positive |
+|------------|-------------|-----------|-------------------|
+| 5 | $14,486 | 83% | Yes |
+| 8 | $12,183 | 70% | Yes |
+| 10 | $10,977 | 62% | Yes |
+| 12 | $9,988 | 56% | Yes |
+| 15 | $8,284 | 47% | Yes |
+| 20 | $5,992 | 34% | Yes |
+
+Best: mae_increment > 5 at add bar. Avg savings $305/stopped add, avg cost $97/skipped winner add. Winner-touch rate 11-15%.
+
+Per-week detail (mae_incr>5):
+
+| Week | Cat | Net benefit | Saves | Costs | Winner-touch |
+|------|-----|------------|-------|-------|-------------|
+| W40 | WEAKEST | +$8,396 | $10,946 | $2,550 | 11% |
+| W41 | MID | +$11,634 | $17,206 | $5,572 | 12% |
+| W46 | GOOD | +$17,446 | $26,843 | $9,396 | 15% |
+| W47 | BEST | +$28,060 | $47,868 | $19,807 | 15% |
+| W48 | LOW | +$6,892 | $10,991 | $4,098 | 12% |
+
+### Tighten stop: FAILED
+
+All configs negative on at least one week. Tightening to 45 ticks is marginally positive in some configs but inconsistent. The choppiness signal at entry was filtered to <0.10 — by the time it rises above trigger thresholds mid-trade, the damage is already done.
+
+### Break-even stop: PASSED (MFE > 10 through 25)
+
+| MFE > | Avg net/week | All weeks positive |
+|--------|-------------|-------------------|
+| 10 | $14,797 | Yes |
+| 15 | $12,923 | Yes |
+| 20 | $11,219 | Yes |
+| 25 | $8,894 | Yes |
+| 30 | $5,469 | No |
+
+Best: MFE > 10 ticks. Per-week detail:
+
+| Week | Cat | Net benefit | Saves | Costs | Winner-touch |
+|------|-----|------------|-------|-------|-------------|
+| W40 | WEAKEST | +$10,495 | $28,820 | $18,325 | 34% |
+| W41 | MID | +$7,390 | $36,210 | $28,820 | 30% |
+| W46 | GOOD | +$17,795 | $51,115 | $33,320 | 25% |
+| W47 | BEST | +$31,860 | $82,875 | $51,015 | 19% |
+| W48 | LOW | +$6,445 | $27,660 | $21,215 | 29% |
+
+Winner-touch rate is high (19-34%) but acceptable for break-even: it turns small winners into breakeven (0 minus commission), not into full losses. The avg cost per touched winner is $200 — these are winners that retraced past entry after reaching 10+ ticks of MFE.
+
+### Actions proceeding to Step 5/6
+
+1. **Skip add** (mae_increment > 5 at add bar) — feature-triggered
+2. **Break-even stop** (MFE > 10 ticks) — mechanical rule
+
+Early exit and tighten stop are dead.
+
+**Script:** `lab/rotational-NQ-scale-detection-step27.py`
+
+---
+
+## Track C Steps 5-7: Fork, live sim, full P1 validation
+
+### Step 5: Fork verification
+
+Forked `run_sim_filtered` into `run_sim_managed` with two management hooks:
+1. `skip_add_fn(mae_ticks, mae_incr, agg_bar_offset)` — skip martingale add when mae_increment > threshold
+2. `breakeven_mfe` — arm break-even stop when MFE exceeds threshold
+
+**Fork verification: PASS** — 6,496 cycles, all PnL values match with management disabled.
+
+### Step 6-7: Live sim results (full P1)
+
+| Config | Cycles | WR | SR | E[R] | PnL | PF | Weeks improved |
+|--------|--------|-----|-----|------|-----|-----|---------------|
+| Baseline (A+B) | 6,496 | 85% | 15% | $78.16 | $507,737 | 1.86 | — |
+| Skip add (mae_incr>5) | 6,652 | 75% | 19% | $73.98 | $492,082 | 2.03 | **4/12** |
+| Break-even (MFE>10) | 7,941 | 35% | 2% | $53.25 | $422,851 | 4.28 | **1/12** |
+| Combined | 7,975 | 34% | 3% | $52.75 | $420,694 | 4.73 | **0/12** |
+
+### Kill gate: FAIL
+
+All three management actions fail the kill criteria:
+- **Skip add:** 4/12 weeks improved, E[R] delta -5.4%. Kill: improvement only in subset of weeks.
+- **Break-even:** 1/12 weeks improved, E[R] delta -31.9%. Kill: catastrophic degradation.
+- **Combined:** 0/12 weeks improved. Kill: combined worse than best individual.
+
+### Root cause analysis
+
+**Break-even stop is catastrophic** because it converts 50% of would-be winners into breakeven exits. WR dropped from 85% to 35%. The mechanism: most trades experience some MFE followed by retracement before eventually hitting the reversal target. With MFE>10 armed, any retracement past entry triggers breakeven exit — even though the trade would have recovered. The 7,941 cycle count (vs 6,496 baseline) shows the breakeven exits create new entry opportunities, but these re-entries don't compensate for the lost reversals.
+
+**Skip add degrades E[R]** because skipping the martingale add means reversal profits are halved (1 contract instead of 2). The replay (Step 4) predicted $14,486/week net benefit, but the live sim shows -$1,305/week. The discrepancy arises because:
+1. The replay assumed cycle outcomes were independent of contract count
+2. In reality, skipping the add changes the avg_entry (stays at d0 entry vs d0+d1 average), which shifts subsequent stop/reversal trigger prices
+3. The P&L profile with 1 contract is worse on both sides: half the profit on winners, but the same grid structure
+
+**Fundamental lesson:** Replay analysis that holds cycle outcomes fixed while varying one parameter systematically overestimates management benefit. The live sim reveals dynamic interactions — management actions change the trade sequence in ways that compound negatively.
+
+This is the inverse of the entry filter pattern (Steps 8-9 of chop filter, Step 5 of Track B): entry filters produced BETTER live sim results than replay predicted because skipping bad entries created good re-entries. Management actions produce WORSE live sim results because cutting trades mid-stream loses favorable dynamics.
+
+### Track C conclusion
+
+**Track C FAILED at Step 6.** No management action improved the strategy in live simulation.
+
+The in-trade signals are real (kill gate passed at Step 2 with strong effect sizes). The feature-to-action mapping was sound (Step 3). The replay analysis showed positive net benefit (Step 4). But the live sim dynamics invalidated the replay predictions.
+
+**What survived as knowledge:**
+1. signed_chop_vs_pos and mae_proximity diverge 5-7 agg bars before stop outcome — the signals are genuine
+2. 100% of gross losses come from hard stops — no reversal cycle loses money
+3. The regime signals are NOT inverted for in-trade use (opposite of Track B's entry finding)
+4. Entry filter dynamics (skip -> re-enter) are beneficial; mid-trade management dynamics (cut -> re-enter) are harmful
+
+**What NOT to try next:**
+- Any mid-trade management that changes the trade exit before the hard stop or reversal target
+- Break-even stops at any threshold (the mechanism is structurally harmful to this strategy)
+- Tighten-stop variants (already failed at Step 4)
+
+**Possible directions (not tested, not recommended):**
+- [SPECULATION] Adaptive position sizing (vary initial qty based on regime, rather than cutting mid-trade) — does not change the trade dynamics since sizing happens at entry
+- [SPECULATION] Adaptive stop distance (set hard_stop based on entry-time regime features rather than fixed 60 ticks) — but this is effectively tighten-stop, which already failed
+
+**Script:** `lab/rotational-NQ-scale-detection-step28.py`
+**Data:** `lab/output/rotational-NQ-scale-detection/trade-management-step7-results.csv`
+Runtime: 422s
+
+---
+

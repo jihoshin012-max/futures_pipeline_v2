@@ -4,7 +4,7 @@
 
 ## Execution Order
 
-**Run in sequence: A → B → C → D.** Each track's winner becomes the next track's baseline.
+**Run in sequence: A → B → C → C2 → D.** Each track's winner becomes the next track's baseline. C failed; C2 is the revised attempt.
 
 - A and B are **entry decisions** (before trade)
 - C is **loss management** (during trade, reduce losses)
@@ -28,12 +28,19 @@
 
 **Question:** Is this specific pullback done, or does it have more to go?
 
-## Track C: In-Trade Loss Management
+## Track C: In-Trade Loss Management — FAILED
 
 **Prompt:** `rotational-NQ-prompt-trade-management-c.md`
-**Status:** draft (depends on A + B)
+**Status:** FAILED — mid-trade signals did not differentiate winners from losers in time.
 
 **Scope:** 8 candidates (4 regime + 4 trade-behavior) evaluated mid-trade for early exit, skip add, break-even stop, tighten stop.
+
+## Track C2: Loss Mitigation (revised approach)
+
+**Prompt:** `rotational-NQ-prompt-loss-mitigation-c2.md`
+**Status:** draft (depends on A + B)
+
+**Scope:** Avoids mid-trade signal reading. Instead: HS sweep (40-60), session context signals (tick rate ratio, session range, price displacement, SR acceleration), mechanical rules (partial profit, adaptive stop from fade_confirm).
 
 **Question:** Once in a trade, is it going badly enough to cut early?
 
@@ -60,5 +67,6 @@ Steps 0-1 from Track A produced shared output files. Subsequent tracks generate 
 |---|---|---|---|---|
 | Regime | A (chop + dR2/dSlope) | Is the market rotational and improving? | Last 3 agg bars | Entry gate |
 | Move | B (fade confirmation) | Is this pullback exhausting? | Entry tick + last 2-3 completed bars | Entry gate |
-| Defense | C (loss management) | Is this trade going badly? | During the trade | Reduce losses |
+| Defense | ~~C~~ (mid-trade signals) | ~~Is this trade going badly?~~ | ~~During the trade~~ | FAILED |
+| Defense | C2 (adaptive stops + session context) | Can we reduce loss severity? | At entry + session state | Reduce losses |
 | Offense | D (extended hold) | Should we hold past the reversal? | At 10pt reversal point | Increase wins |

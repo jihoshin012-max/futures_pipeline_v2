@@ -21,8 +21,20 @@ This prompt tests whether mid-trade signals can identify trades where holding pa
 ## Prior art
 
 - **Chop filter + Track A:** Validated entry gates. Filters already break the pure reversal chain — most reversals are blocked and the strategy enters a fresh watch phase. Holding longer doesn't disrupt the sequence any further than the filters already do.
-- **Track B (fade confirmation):** Tests pullback exhaustion at entry. Track D uses similar signals but mid-trade at the reversal point.
+- **Track A (entry signals):** dR2 <= -0.40, dSlope <= -2.0. P2 PASS (E[R]=$70.40, PF=1.73).
+- **Track B (fade confirmation):** fade_confirm < 0.40. P2 PASS (E[R]=$80.55, PF=1.91, 98% retention).
 - **Track C (management):** Tests loss reduction mid-trade. Track D uses the same signal categories but for the opposite purpose (extend winners vs cut losers).
+
+### Track B critical finding — hypothesis inversion
+
+**All Track B entry hypotheses were inverted.** The strategy profits from mean reversion: entering when the pullback has MAXIMUM momentum gives the most room for reversion. Entering during exhaustion is worse.
+
+**Implication for Track D:** At the 10pt reversal point, the same inversion may apply. The intuitive hypothesis is "hold when conditions are favorable (calm, rotational)." But if the strategy profits from strong momentum, the hold decision might work differently:
+
+- **Trades that entered with strong pullback momentum** (low fade_confirm) may have stronger mean reversion — meaning the 10pt reversal captures most of the move, and extending adds little.
+- **Trades that entered with weaker momentum** (higher fade_confirm, still below 0.40) may have more residual reversion — price hasn't fully snapped back yet, and holding could capture more.
+
+[SPECULATION] This is unverified — Step 1's reversal characterization will show whether entry momentum strength correlates with post-10pt continuation. Test both directions for every signal.
 
 ## Mechanical verification
 
@@ -114,9 +126,11 @@ Evaluated at the moment the 10pt reversal would normally trigger. All from compl
 
 Use whatever config survives Tracks A + B + C. Update before executing.
 
-**Track A winner (known):** chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0. P1: 6,624 cycles, 83% WR, 17% SR, E[R]=$63.22. P2: 6,927 cycles, 84% WR, 16% SR, E[R]=$70.40.
+**Track A winner:** chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0. P1: E[R]=$63.22. P2: E[R]=$70.40.
 
-**Tracks B + C:** TBD — update baseline after they complete.
+**Track B winner:** + fade_confirm < 0.40. P1: E[R]=$78.16, 85% WR, 15% SR, 98% retention. P2: E[R]=$80.55, PF=1.91.
+
+**Track C:** TBD — update baseline after Track C completes. If Track C fails, use Track A + B numbers above.
 
 ## Locked files (DO NOT MODIFY)
 
