@@ -108,3 +108,10 @@ Pullback reaches 10pts
 5. **d2_ema9 (EMA9 curvature/acceleration) is the strongest directional signal.** Not ema_spread (level) or d_ema9 (velocity). The second derivative captures trend acceleration which predicts mean-reversion direction. No inversion (unlike Track B).
 6. **In-trade d2 monitoring >> entry gating.** Entry gate: +28%. In-trade hold: +128%. Combined: +158%. The hold mechanic lets winners run when curvature stays aligned — trades exit on d2_avg3 flip instead of fixed reversal distance. Near-additive with entry gate.
 7. **BE trail hurts.** Break-even trailing on extended holds exits trades that would recover. Same root cause as Track C/C2: protective stops interact destructively with the rotation mechanic.
+
+### Open Investigations
+
+| # | Dimension | Status | Notes |
+|---|---|---|---|
+| 1 | **Loss mitigation** | Unsolved | C and C2 both FAILED. Mid-trade signals too slow, session context no signal, adaptive stops net negative, mechanical rules destroy reversals. 100% of losses from depth_1 stops. New approaches needed — previous methods exhausted. |
+| 2 | **Position sizing** | Unexplored | Currently fixed 1+1 add. Could scale size based on entry quality (signal confidence from stacked gates). Not yet tested. |

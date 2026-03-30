@@ -66,13 +66,20 @@ Steps 0-1 from Track A produced shared output files. Subsequent tracks generate 
 - `lab/output/rotational-NQ-scale-detection/regime-direction-tagged-cycles.csv`
 - `lab/output/rotational-NQ-scale-detection/regime-direction-intrade-bars.csv`
 
-## Four Layers
+## Layers (completed)
 
-| Layer | Track | Question | Timescale | Focus |
+| Layer | Track | Question | Timescale | Result |
 |---|---|---|---|---|
-| Regime | A (chop + dR2/dSlope) | Is the market rotational and improving? | Last 3 agg bars | Entry gate |
-| Move | B (fade confirmation) | Is this pullback exhausting? | Entry tick + last 2-3 completed bars | Entry gate |
-| Direction | B2 (EMA directional) | Does the trade align with short-term trend? | EMA 9/21 at entry | Entry gate |
+| Regime | A (chop + dR2/dSlope) | Is the market rotational and improving? | Last 3 agg bars | PASSED |
+| Move | B (fade confirmation) | Is this pullback exhausting? | Entry tick + last 2-3 completed bars | PASSED |
+| Direction + Hold | B2 (d2_ema9 + d2_avg3) | Aligned with trend? Hold when curvature supports. | EMA 9/21 at entry + mid-trade | PASSED |
 | Defense | ~~C~~ (mid-trade signals) | ~~Is this trade going badly?~~ | ~~During the trade~~ | FAILED |
 | Defense | ~~C2~~ (adaptive stops + session) | ~~Can we reduce loss severity?~~ | ~~At entry + session~~ | FAILED |
-| Offense | D (extended hold) | Should we hold past the reversal? | At 10pt reversal point | Increase wins |
+| Offense | ~~D~~ (extended hold) | ~~Should we hold past the reversal?~~ | ~~At 10pt reversal point~~ | Superseded by B2 |
+
+## Open Investigations
+
+| # | Dimension | Status | Notes |
+|---|---|---|---|
+| 1 | **Loss mitigation** | Unsolved | C and C2 both FAILED. 100% of losses from depth_1 stops. Previous approaches exhausted — new methods needed. |
+| 2 | **Position sizing** | Unexplored | Fixed 1+1 add. Could scale based on entry quality / signal confidence. |
