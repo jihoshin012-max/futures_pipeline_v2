@@ -1,0 +1,13 @@
+type,label,n,wr,sr,er,pnl
+baseline,chop_only,10312,0.8194,0.1786,53.43,550919.50
+entry_filter,dr2<=-0.4+ds<=-2.0,6624,0.8321,0.1668,63.22,418785.00
+random,seed_0,,,,53.30,
+random,seed_1,,,,53.07,
+random,seed_2,,,,53.60,
+random,seed_3,,,,54.88,
+random,seed_4,,,,52.79,
+random,seed_5,,,,53.72,
+random,seed_6,,,,52.61,
+random,seed_7,,,,54.40,
+random,seed_8,,,,54.91,
+random,seed_9,,,,51.96,

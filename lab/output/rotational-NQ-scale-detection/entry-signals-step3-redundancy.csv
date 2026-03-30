@@ -1,0 +1,7 @@
+feat_i,feat_j,pearson_r,redundant,keep,drop
+dchop,d2chop,0.8715,True,d2chop,dchop
+dchop,dr2,0.6328,False,,
+dchop,dslope,0.8194,True,dslope,dchop
+d2chop,dr2,0.6023,False,,
+d2chop,dslope,0.7063,True,dslope,d2chop
+dr2,dslope,0.5221,False,,
