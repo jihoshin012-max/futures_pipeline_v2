@@ -1,0 +1,64 @@
+{
+  "archetype": "rotational",
+  "instrument": "NQ",
+  "variant": "chop",
+  "version": "1.0",
+  "frozen_date": "2026-03-29",
+  "source": "scale-detection-study P1+P2 validation",
+
+  "strategy_params": {
+    "step_dist_pts": 10.0,
+    "hard_stop_ticks": 60,
+    "initial_qty": 1,
+    "max_levels": 1,
+    "max_contract_size": 2,
+    "max_fades": 0
+  },
+
+  "choppiness_filter": {
+    "enabled": true,
+    "threshold": 0.10,
+    "lookback_bars": 3,
+    "bar_size_ticks": 250,
+    "computation": "abs(close[i] - close[i-lookback+1]) / sum(high[j] - low[j] for j in [i-lookback+1..i])",
+    "gate_behavior": "skip entry when choppiness >= threshold"
+  },
+
+  "validation": {
+    "p1_baseline": {
+      "cycles": 18148,
+      "wr": 0.76,
+      "sr": 0.24,
+      "er": 3.13,
+      "total_pnl": 56810
+    },
+    "p1_filtered": {
+      "cycles": 10468,
+      "wr": 0.82,
+      "sr": 0.18,
+      "er": 55.41,
+      "total_pnl": 580071
+    },
+    "p2_baseline": {
+      "cycles": 19947,
+      "wr": 0.76,
+      "sr": 0.24,
+      "er": 3.78,
+      "total_pnl": 75394
+    },
+    "p2_filtered": {
+      "cycles": 11043,
+      "wr": 0.82,
+      "sr": 0.18,
+      "er": 54.86,
+      "total_pnl": 605808
+    },
+    "sanity_check": "PASS - random filter at same retention shows no improvement (37x worse than choppiness)",
+    "stress_test": "PASS - threshold stable 0.05-0.15, survives 6t slippage, WR vulnerability at 76%"
+  },
+
+  "notes": {
+    "hs_ratio": "1.5x step (not 1.25x - HS=50/1.25x was negative for SD=10)",
+    "speedread_filter": "retained but independent (Inputs 8-11), can run alongside choppiness"
+  }
+}
