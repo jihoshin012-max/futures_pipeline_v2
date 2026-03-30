@@ -56,12 +56,12 @@ Parent Study (completed)
 │  rotational-NQ-prompt-trade-management-c.md
 │  Mid-trade signals did not differentiate winners from losers in time
 │
-├─ Track C2: Loss Mitigation — revised approach (draft)
+├─ Track C2: Loss Mitigation — revised approach (FAILED)
 │  rotational-NQ-prompt-loss-mitigation-c2.md
-│  Tests: HS sweep (40-60), session context (tick rate, range, displacement),
-│         mechanical rules (partial profit, adaptive stop)
+│  HS sweep: HS=60 optimal. Session context: no signal. Adaptive stop: net negative.
+│  Partial profit: break-even mechanism kills reversals (same root cause as Track C).
 │
-└─ Track D: Extended Hold (draft, depends on C2)
+└─ Track D: Extended Hold (draft)
    rotational-NQ-prompt-extended-hold.md
    Tests: conditional reversal delay, stepped trailing, ATR-scaled target
 ```
@@ -89,6 +89,9 @@ Pullback reaches 10pts
 | + Entry signals | `lab/output/rotational-NQ-entry-signals-params-frozen.json` | bench PASS |
 | + Fade confirm | `lab/output/rotational-NQ-fade-confirm-params-frozen.json` | bench PASS |
 
-### Key Finding
+### Key Findings
 
-Track B hypotheses were ALL inverted. Fades work best when pullback has MAXIMUM momentum, not during exhaustion. Track C and D should test both directions for regime signals.
+1. Track B hypotheses were ALL inverted. Fades work best when pullback has MAXIMUM momentum, not during exhaustion.
+2. **Replay analysis overestimates management benefits.** Confirmed across Track C (skip-add, break-even) and Track C2 (partial profit). Break-even stops interact destructively with the reversal mechanic at this timescale. Do NOT develop management rules from replay without live sim verification.
+3. 100% of gross losses come from depth_1 HARD_STOPs. depth_0 trades never stop at SD=10 HS=60.
+4. HS=60 is globally optimal for the A+B filtered population.

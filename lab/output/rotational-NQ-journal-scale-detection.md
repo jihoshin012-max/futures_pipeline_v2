@@ -1638,3 +1638,265 @@ Runtime: 422s
 
 ---
 
+### 2026-03-30 — Track C2: Loss Mitigation (Adaptive Stops, Session Context, Mechanical Rules)
+
+## Track C2 Step 0: Week selection + HS sweep
+
+**Prompt:** `lab/workflows/hypotheses/rotational-NQ-prompt-loss-mitigation-c2.md`
+**Baseline:** Track A+B combined — SD=10 HS=60 depth_1 MCS=2 + chop<0.10 + dR2<=-0.40 + dSlope<=-2.0 + fade_confirm<0.40
+
+### Week selection
+
+Reused from Track C Step 0 (same A+B baseline, same 5 weeks):
+
+| Category | Week | Cycles | WR | SR | PnL | E[R] |
+|----------|------|--------|-----|-----|------|------|
+| WEAKEST | W40 | 283 | 81% | 19% | $12,166 | $42.99 |
+| LOW | W48 | 370 | 87% | 13% | $34,292 | $92.68 |
+| MID | W41 | 480 | 85% | 15% | $37,137 | $77.37 |
+| GOOD | W46 | 659 | 84% | 16% | $46,794 | $71.01 |
+| BEST | W47 | 1,322 | 87% | 13% | $122,412 | $92.60 |
+
+### HS sweep
+
+**Method:** Ran A+B combined config at HS = 40, 45, 50, 55, 60 ticks across full P1.
+
+| HS | Cycles | WR | SR | E[R] | PnL | PF | Avg Stop |
+|-----|--------|-----|-----|------|------|-----|----------|
+| 40 | 6,935 | 69% | 31% | $72.62 | $503,602 | 2.14 | -$204.80 |
+| 45 | 6,666 | 81% | 19% | $75.67 | $504,424 | 1.88 | -$458.43 |
+| 50 | 6,613 | 83% | 17% | $75.46 | $499,012 | 1.85 | -$509.76 |
+| 55 | 6,533 | 84% | 16% | $77.84 | $508,523 | 1.88 | -$559.35 |
+| 60 | 6,496 | 85% | 15% | $78.16 | $507,737 | 1.86 | -$609.15 |
+
+**Verdict: No HS improvement > 3%. Keep HS=60.**
+
+HS=60 is already optimal for the A+B filtered population. Every tighter stop degrades E[R]:
+- HS=40: -7.1% E[R]. Cuts avg stop loss to $205 but doubles SR (31% vs 15%). Many trades that would have survived at 60 ticks get stopped at 40.
+- HS=55: -0.4% E[R]. Closest competitor but still negative.
+- Total PnL is nearly identical across 45-60 range ($499K-$508K), but the E[R] favors wider stops because fewer stopped cycles means fewer re-entries.
+
+**Per-week pattern:** HS=60 wins 4/12 weeks, HS=40 wins 3/12, HS=55 wins 3/12. No consistent pattern — the optimal HS varies by week. The prompt's hypothesis that the filtered population might favor tighter stops is not supported.
+
+**Key insight for Parts 2-3:** The avg stop loss at HS=60 is -$609. At HS=40 it's -$205. The 3x smaller stops don't compensate for the 2x higher stop rate. This means adaptive stop (Part 3, feature 6) faces the same tradeoff — tightening stops for borderline entries will increase SR for those entries. The savings must outweigh the increased stopping.
+
+**Script:** `lab/rotational-NQ-scale-detection-step29.py`
+**Data:** `lab/output/rotational-NQ-scale-detection/c2-step0-hs-sweep.csv`
+Runtime: 426s
+
+---
+
+## Track C2 Steps 1-2: Session context features + correlation analysis
+
+**Method:** Ran A+B combined on 5 test weeks (3,114 cycles). Tagged each cycle with 4 session context features computed at entry from completed bars:
+
+1. **tick_rate_ratio** — prev bar's tick rate / session avg tick rate (99% coverage)
+2. **session_range_ratio** — session range / ATR_at_open (44% coverage)
+3. **price_displacement** — (entry_price - session_mid) / ATR_at_open (44% coverage)
+4. **sr_acceleration** — recent_sr(20) - session_sr (92% coverage)
+
+**Coverage issue:** session_range_ratio and price_displacement only 44% valid. Root cause: ATR_at_open from 1-tick data is near-zero (ATR ≈ 0.25 for NQ at tick resolution), producing extreme ratios (165-1760) and frequent NaN. This is the same ATR issue noted in Step 0 of the original study. These features need a different normalization (e.g., rolling N-bar range on 250-tick bars instead of 1-tick ATR).
+
+### Quintile analysis (pooled, 5 test weeks)
+
+| Feature | Q1 SR | Q3 SR | Q5 SR | Q1-Q5 spread | Pattern |
+|---------|-------|-------|-------|--------------|---------|
+| tick_rate_ratio | 13% | 16% | 15% | 2.1pt | Weak, non-monotonic |
+| session_range_ratio | 16% | 13% | 14% | 2.0pt | Non-monotonic |
+| price_displacement | 13% | 15% | 14% | 1.1pt | Flat, midpoint worst (18% at Q4) |
+| sr_acceleration | 11% | 18% | 13% | 2.0pt | Non-monotonic (extremes better) |
+
+**sr_acceleration has widest internal spread:** Q1 (11%) vs Q3 (18%) = 7pt, but Q5 (13%) is also low. Both improving and deteriorating conditions have lower SR than neutral — this is not a directional signal usable as a gate.
+
+**price_displacement shows inverted pattern:** entries near session midpoint (Q4, 18% SR) stop MORE than entries at extremes (Q1 13%, Q5 14%). Opposite of hypothesis. Entries at extremes may benefit from mean reversion dynamics (price displaced from mid = potential snap-back).
+
+### Kill gate: FAIL
+
+**Max Q1-vs-Q5 SR spread: 2.1pt (tick_rate_ratio).** No feature exceeds 3pt threshold.
+
+None of the session context features produce monotonic, directional SR separation at the A+B filtered population level. The A+B filter already selects high-quality entries (85% WR, 15% SR) — there may be insufficient variance in stop rate for session context to further discriminate.
+
+**Session context signals are dead. Skip Step 3. Proceed to Step 4 (mechanical rules).**
+
+**Script:** `lab/rotational-NQ-scale-detection-step30.py`
+**Data:** `lab/output/rotational-NQ-scale-detection/c2-session-context-tagged-cycles.csv`
+Runtime: 281s
+
+---
+
+## Track C2 Step 4: Mechanical rules replay
+
+### Depth composition (5 test weeks, 3,114 cycles)
+
+- depth_0 (1 contract): 2,161 (69%) -- 0 stops (all depth_0 are reversals)
+- depth_1 (2 contracts): 953 (31%) -- 451 stops
+
+**100% of stops are depth_1 trades.** No depth_0 trade ever stops at HS=60 with SD=10 because the hard stop (15pts from avg_entry) exceeds the step distance before the add triggers. Partial profit eligibility is limited to 31% of cycles.
+
+### Partial profit replay: PASS (all N values, all weeks)
+
+| N pts | Fired | Stops saved | Rev cost | Total delta | All weeks + |
+|-------|-------|-------------|----------|-------------|-------------|
+| 3 | 858 | $152K | $-22K | $214,785 | YES |
+| 4 | 822 | $136K | $-12K | $207,320 | YES |
+| 5 | 741 | $120K | $-1K | $191,248 | YES |
+| 6 | 445 | $100K | ~$0 | $162,670 | YES |
+| 7 | 307 | $73K | ~$0 | $122,218 | YES |
+
+**Per-week detail (N=5, best cost efficiency):**
+
+| Week | Cat | Saves | Costs | Net |
+|------|-----|-------|-------|-----|
+| W40 | WEAKEST | $24,500 | $20 | $24,480 |
+| W41 | MID | $25,378 | $210 | $25,168 |
+| W46 | GOOD | $49,092 | $192 | $48,900 |
+| W47 | BEST | $67,732 | $888 | $66,845 |
+| W48 | LOW | $25,962 | $108 | $25,855 |
+
+**Mechanism:** Each stopped depth_1 trade converts from ~-$600 loss (2 contracts at 60-tick stop) to ~+$60 profit (1 contract at +N pts, 1 at break-even). That's a ~$660 swing per stopped trade. The cost from reversals is small because locking in N pts on one contract while the other reaches reversal is roughly neutral when N ~ per-contract reversal ticks (5pts = 20 ticks ~ typical depth_1 reversal per contract).
+
+**N=5 vs N=3 tradeoff:** N=3 has highest total delta ($215K) but $22K in costs (locking in 3pts when reversals earn 5pts per contract). N=5 has $191K delta with only $1K costs. N=6-7 have near-zero costs but fewer trades fire (MFE doesn't reach 6-7pts for many stopped trades).
+
+**Risk flag:** This replay assumes the remaining contract reaches reversal on REVERSAL trades (break-even doesn't trigger). Track C showed break-even MFE>10 was catastrophic (WR 85% -> 35%). Here the break-even is on only HALF the position after partial profit is secured — different dynamics. But the live sim (Step 5-6) must verify this.
+
+### Adaptive stop replay: FAIL
+
+| Week | Cat | Saves | Costs | Net |
+|------|-----|-------|-------|-----|
+| W40 | WEAKEST | $5,204 | $1,938 | $3,266 |
+| W41 | MID | $7,040 | $9,652 | **-$2,612** |
+| W46 | GOOD | $10,704 | $10,080 | $624 |
+| W47 | BEST | $17,299 | $29,086 | **-$11,787** |
+| W48 | LOW | $4,948 | $6,791 | **-$1,843** |
+
+Total: -$12,352. 3/5 weeks negative. Kills 355 stops earlier (avg $127 saved) but turns 90 reversals into stops (avg $638 cost). The [0.30,0.40) fade_confirm bucket (tightest stops at HS~42) accounts for -$10K of the loss.
+
+**Root cause:** Same as the HS sweep (Step 0) — tighter stops increase SR more than they reduce per-stop loss. fade_confirm-based adaptation adds no value over fixed HS=60. The prompt's sanity check (Step 8) would compare adaptive vs fixed tighter HS, but adaptive is already net negative, making the comparison moot.
+
+**Adaptive stop is dead.**
+
+### Actions proceeding to Step 5
+
+1. **Partial profit** at N=3,4,5,6,7 (all passed; live sim will determine best N)
+
+Session context signals and adaptive stop are both dead. HS sweep showed no improvement. Track C2 now depends entirely on partial profit.
+
+**Script:** `lab/rotational-NQ-scale-detection-step31.py`
+Runtime: 273s
+
+---
+
+## Track C2 Steps 5-7: Fork, live sim, full P1 validation
+
+### Step 5: Fork verification
+
+Forked `run_sim_filtered` into `run_sim_partial` with partial profit mechanic:
+- When depth_1 trade MFE reaches N ticks: close 1 of 2 contracts, arm break-even on remainder
+- `partial_mfe_ticks=0` disables the mechanic
+
+**Fork verification: PASS** -- 6,496 cycles, PnL match with baseline.
+
+### Step 6: Live sim on test weeks
+
+| N pts | Cycles | WR | SR | BE% | E[R] | PnL | PF | dE[R]% |
+|-------|--------|-----|-----|-----|------|-----|-----|--------|
+| BL | 3,114 | 85% | 14% | -- | $81.18 | $252,800 | 1.92 | -- |
+| 3 | 3,259 | 73% | 3% | 25% | $75.84 | $247,168 | 2.13 | -6.6% |
+| 4 | 3,230 | 75% | 4% | 21% | $79.69 | $257,392 | 2.17 | -1.8% |
+| 5 | 3,213 | 76% | 6% | 18% | $80.18 | $257,630 | 2.12 | -1.2% |
+| 6 | 3,192 | 78% | 7% | 14% | $81.37 | $259,718 | 2.09 | +0.2% |
+| 7 | 3,169 | 80% | 9% | 10% | $81.52 | $258,344 | 2.04 | +0.4% |
+
+N=3 heavily degraded (WR 85% -> 73%, 25% break-even exits). N=6-7 are near-neutral.
+
+### Step 7: Full P1 validation
+
+| N pts | Cycles | WR | SR | BE% | E[R] | PnL | PF | dE[R]% | Wks+ |
+|-------|--------|-----|-----|-----|------|-----|-----|--------|------|
+| BL | 6,496 | 85% | 15% | -- | $78.16 | $507,737 | 1.86 | -- | -- |
+| 3 | 6,856 | 73% | 3% | 26% | $74.34 | $509,690 | 2.11 | -4.9% | 5/12 |
+| 4 | 6,791 | 75% | 4% | 22% | $76.91 | $522,318 | 2.11 | -1.6% | 5/12 |
+| 5 | 6,729 | 76% | 6% | 19% | $76.70 | $516,084 | 2.04 | -1.9% | 6/12 |
+| 6 | 6,679 | 78% | 8% | 15% | $78.13 | $521,825 | 2.03 | -0.0% | 7/12 |
+| 7 | 6,619 | 80% | 10% | 10% | $77.99 | $516,234 | 1.97 | -0.2% | 6/12 |
+
+**Kill criterion met: P1 improvement < 3% E[R] for all N values. Study ends.**
+
+### Root cause: break-even stop converts winners to flat exits
+
+Same mechanism as Track C. The replay predicted $215K net benefit at N=3 because it assumed REVERSAL trades would still reverse after the partial. In reality, depth_1 REVERSAL trades commonly retrace past avg_entry between the MFE peak and the eventual reversal target. With break-even armed after partial, this retracement triggers an exit at avg_entry.
+
+Evidence:
+- 26% of cycles exit as BREAKEVEN at N=3 (these were REVERSAL or ongoing trades)
+- WR drops from 85% to 73% — the missing 12% moved from REVERSAL to BREAKEVEN
+- Hard stop rate drops from 15% to 3% (the partial + break-even prevents most stops)
+- But the cost of the BREAKEVEN exits (~$0 per trade minus commission) exceeds the savings from prevented stops
+
+**Replay vs live sim discrepancy (quantified):**
+- Replay predicted $214,785 improvement at N=3 on test weeks
+- Live sim produced -$5,632 degradation on test weeks
+- Gap: $220K. Caused by REVERSAL -> BREAKEVEN conversion that replay cannot detect
+
+**This confirms Track C's finding:** replay analysis that holds cycle outcomes fixed while varying management systematically overestimates benefit. The live sim reveals that break-even stops interact destructively with the reversal mechanic at this strategy's timescale.
+
+### Per-week pattern
+
+W40 (WEAKEST) consistently improved at all N: $42.99 -> $50-65 E[R]. The partial profit mechanism genuinely helps the worst week by cutting stop losses. But good weeks (W47 $92.60 -> $78-89, W48 $92.68 -> $84-95) degrade because break-even exits cancel reversal profits.
+
+### Track C2 conclusion
+
+**Track C2 FAILED.** All four approaches produced no improvement:
+
+| Approach | Step | Result |
+|----------|------|--------|
+| HS sweep | Step 0 | HS=60 optimal, all tighter stops degrade E[R] |
+| Session context signals | Step 2 | No feature shows SR spread > 3pt (kill gate) |
+| Adaptive stop (fc-based) | Step 4 | Net negative, 3/5 weeks losing |
+| Partial profit | Step 7 | Break-even mechanism kills reversals, net -0.0% to -4.9% |
+
+**What survived as knowledge:**
+1. HS=60 is globally optimal for the A+B filtered population -- not just the unfiltered baseline
+2. Session context features (tick rate, session range, price displacement, sr_acceleration) add no discriminative power beyond what chop + dR2 + dSlope + fade_confirm already capture
+3. Replay analysis consistently overestimates management benefits -- this is now confirmed across BOTH Track C (skip-add, break-even) and Track C2 (partial profit). The mechanism is the same: break-even/management actions interact with the reversal mechanic at this timescale
+4. depth_0 trades (69% of A+B filtered cycles) never stop. All stops come from depth_1 trades
+5. N=6 partial profit is near-neutral (E[R] -0.04%, PF 2.03 vs 1.86) -- better risk profile (lower max loss per trade) but no E[R] improvement
+
+**What NOT to try next:**
+- Any management action that uses break-even stops (confirmed across 2 studies)
+- Session context entry gates (insufficient signal)
+- Tighter hard stops (HS sweep is definitive)
+- Replay-based development without live sim verification
+
+**Script:** `lab/rotational-NQ-scale-detection-step32.py`
+**Data:** `lab/output/rotational-NQ-scale-detection/c2-step7-full-p1-results.csv`
+Runtime: 482s
+
+---
+
+### 2026-03-30 — Depth analysis: add vs no-add
+
+**Context:** Track C2 finding #3 confirmed 100% of gross losses come from depth_1 HARD_STOPs. Depth_0 trades have 100% WR and never stop. Investigated whether removing the martingale add improves overall performance.
+
+**P1 depth split (A+B filtered):**
+
+| | Depth 0 (no add) | Depth 1 (add triggered) |
+|---|---|---|
+| Cycles | 3,127 (60%) | 2,070 (40%) |
+| WR | 100% | 52% |
+| Stops | 0 | 992 |
+| PnL | +$618,012 | -$396,597 |
+| E[R] | +$197.64 | -$191.59 |
+
+**No-add comparison (max_levels=0, max_cs=1):**
+
+| | P1 depth_1 | P1 no_add | P2 depth_1 | P2 no_add |
+|---|---|---|---|---|
+| Cycles | 5,197 | 5,152 | 5,307 | 5,274 |
+| WR | 81% | 69% | 83% | 70% |
+| PnL | $221,415 | $201,239 | $294,240 | $258,616 |
+| E[R] | $42.60 | $39.06 | $55.44 | $49.04 |
+
+**Conclusion:** No-add is 9-12% worse in both periods. The add is a net positive — the 52% of depth_1 trades that reverse produce enough to offset the stops. Degradation is larger in P2 (-12.1%) than P1 (-9.1%), confirming the add's value is consistent out of sample. **Depth_1 retained.** Track D proceeds with current A+B baseline.
+
+---
+
