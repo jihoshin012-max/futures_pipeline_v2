@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Choppiness Filter — Visual Options v2</title>
+<style>
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 20px; }
+  h1 { color: #ccc; font-size: 18px; margin-bottom: 24px; }
+  .panel { margin-bottom: 32px; background: #16213e; border-radius: 6px; padding: 16px; }
+  .panel h2 { color: #aaa; font-size: 14px; margin: 0 0 4px 0; }
+  .panel p { color: #777; font-size: 12px; margin: 0 0 12px 0; }
+  canvas { display: block; width: 100%; }
+  .legend { display: flex; gap: 20px; margin-top: 8px; font-size: 11px; color: #888; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+<h1>Choppiness Filter — Visual Options v2 (real calibration data, first 80 bars)</h1>
+
+<div class="panel">
+  <h2>Option A: Colored Bars (columns)</h2>
+  <p>Each bar is independent — green below threshold, red above. No ambiguous connecting lines.</p>
+  <canvas id="cA" height="160"></canvas>
+  <div class="legend">
+    <span><span class="dot" style="background:#22c55e"></span> Below 0.10 (trade allowed)</span>
+    <span><span class="dot" style="background:#ef4444"></span> At/above 0.10 (blocked)</span>
+    <span style="color:#f59e0b">— — Threshold (0.10)</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Option B: Colored Bars + Dimmed Red Background</h2>
+  <p>Same bars, plus subtle red wash behind blocked regions. Trade windows "clear" visually.</p>
+  <canvas id="cB" height="160"></canvas>
+  <div class="legend">
+    <span><span class="dot" style="background:#22c55e"></span> Green bar = allowed</span>
+    <span><span class="dot" style="background:#ef4444"></span> Red bar = blocked</span>
+    <span><span class="dot" style="background:rgba(239,68,68,0.12)"></span> Red wash = blocked zone</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Option C: Dots (no connecting lines)</h2>
+  <p>Discrete points at each bar. Clean separation — no misleading line segments.</p>
+  <canvas id="cC" height="160"></canvas>
+  <div class="legend">
+    <span><span class="dot" style="background:#22c55e; border-radius:50%"></span> Below 0.10</span>
+    <span><span class="dot" style="background:#ef4444; border-radius:50%"></span> At/above 0.10</span>
+    <span style="color:#f59e0b">— — Threshold</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Option D: Split — Green Fill Below Threshold, Red Bars Above</h2>
+  <p>Below-threshold bars are filled green rectangles anchored to zero. Above-threshold are thin red bars. Visually separates the two states.</p>
+  <canvas id="cD" height="160"></canvas>
+  <div class="legend">
+    <span><span class="dot" style="background:rgba(34,197,94,0.5)"></span> Green fill = trade window</span>
+    <span><span class="dot" style="background:#ef4444"></span> Red bar = blocked</span>
+    <span style="color:#f59e0b">— — Threshold</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Option E: Colored Bars Capped at Threshold + Overflow Fade</h2>
+  <p>Green bars drawn to full height. Red bars drawn to full height but with lower opacity above threshold to emphasize how far over. Threshold line is prominent.</p>
+  <canvas id="cE" height="160"></canvas>
+  <div class="legend">
+    <span><span class="dot" style="background:#22c55e"></span> Below 0.10 (full green)</span>
+    <span><span class="dot" style="background:rgba(239,68,68,0.6)"></span> Above 0.10 (red)</span>
+    <span style="color:#f59e0b">━━ Threshold</span>
+  </div>
+</div>
+
+<script>
+const data = [0.0000,0.0000,0.0213,0.3684,0.1846,0.1333,0.3750,0.0556,0.0800,0.3016,0.0370,0.1279,0.0130,0.3443,0.3654,0.0556,0.2692,0.0806,0.4909,0.4259,0.4717,0.0175,0.1905,0.0727,0.0000,0.1324,0.0513,0.4211,0.0811,0.0286,0.2542,0.0370,0.3261,0.5636,0.3725,0.1346,0.0870,0.2075,0.0847,0.1148,0.0000,0.2222,0.3864,0.0408,0.1364,0.3784,0.1765,0.4130,0.1923,0.2581,0.1887,0.2069,0.2708,0.2264,0.1176,0.1923,0.0222,0.1860,0.2653,0.3443,0.3770,0.1132,0.0196,0.1042,0.1852,0.2326,0.2308,0.2157,0.2727,0.2712,0.0339,0.1915,0.5179,0.5294,0.3148,0.3958,0.0000,0.4138,0.0847,0.4400];
+const threshold = 0.10;
+const maxY = 0.60;
+
+function setup(canvasId) {
+  const c = document.getElementById(canvasId);
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr;
+  c.height = 160 * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = 160;
+  const pad = { l: 40, r: 10, t: 10, b: 20 };
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  function xi(i) { return pad.l + (i / (data.length - 1)) * pw; }
+  function yv(v) { return pad.t + (1 - Math.min(v, maxY) / maxY) * ph; }
+  const barW = pw / data.length * 0.7;
+  // Grid
+  ctx.strokeStyle = '#ffffff10';
+  ctx.lineWidth = 1;
+  for (let v = 0; v <= maxY; v += 0.10) {
+    ctx.beginPath(); ctx.moveTo(pad.l, yv(v)); ctx.lineTo(W - pad.r, yv(v)); ctx.stroke();
+    ctx.fillStyle = '#555'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(2), pad.l - 4, yv(v) + 3);
+  }
+  return { ctx, xi, yv, W, H, pad, pw, ph, barW };
+}
+
+function drawThreshold(ctx, W, pad, yv) {
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = '#f59e0b88';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, yv(threshold));
+  ctx.lineTo(W - pad.r, yv(threshold));
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// Option A: Colored bars
+(function() {
+  const { ctx, xi, yv, W, pad, barW } = setup('cA');
+  const baseline = yv(0);
+  for (let i = 0; i < data.length; i++) {
+    const below = data[i] < threshold;
+    ctx.fillStyle = below ? '#22c55e' : '#ef4444';
+    const top = yv(data[i]);
+    ctx.fillRect(xi(i) - barW/2, top, barW, baseline - top);
+  }
+  drawThreshold(ctx, W, pad, yv);
+})();
+
+// Option B: Colored bars + red background
+(function() {
+  const { ctx, xi, yv, W, H, pad, pw, barW } = setup('cB');
+  // Red wash behind blocked regions
+  const segW = pw / data.length;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] >= threshold) {
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.10)';
+      ctx.fillRect(xi(i) - segW/2, pad.t, segW, H - pad.t - pad.b);
+    }
+  }
+  const baseline = yv(0);
+  for (let i = 0; i < data.length; i++) {
+    const below = data[i] < threshold;
+    ctx.fillStyle = below ? '#22c55e' : '#ef4444';
+    const top = yv(data[i]);
+    ctx.fillRect(xi(i) - barW/2, top, barW, baseline - top);
+  }
+  drawThreshold(ctx, W, pad, yv);
+})();
+
+// Option C: Dots
+(function() {
+  const { ctx, xi, yv, W, pad } = setup('cC');
+  drawThreshold(ctx, W, pad, yv);
+  for (let i = 0; i < data.length; i++) {
+    const below = data[i] < threshold;
+    ctx.fillStyle = below ? '#22c55e' : '#ef4444';
+    ctx.beginPath();
+    ctx.arc(xi(i), yv(data[i]), 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+})();
+
+// Option D: Green fill below, red bars above
+(function() {
+  const { ctx, xi, yv, W, pad, barW } = setup('cD');
+  const baseline = yv(0);
+  for (let i = 0; i < data.length; i++) {
+    const below = data[i] < threshold;
+    const top = yv(data[i]);
+    if (below) {
+      // Wide green filled rectangle
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.5)';
+      ctx.fillRect(xi(i) - barW * 0.8, top, barW * 1.6, baseline - top);
+      // Green border
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(xi(i) - barW * 0.8, top, barW * 1.6, baseline - top);
+    } else {
+      // Thin red bar
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(xi(i) - barW/3, top, barW * 0.66, baseline - top);
+    }
+  }
+  drawThreshold(ctx, W, pad, yv);
+})();
+
+// Option E: Full bars, opacity shift above threshold
+(function() {
+  const { ctx, xi, yv, W, pad, barW } = setup('cE');
+  const baseline = yv(0);
+  for (let i = 0; i < data.length; i++) {
+    const below = data[i] < threshold;
+    const top = yv(data[i]);
+    if (below) {
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(xi(i) - barW/2, top, barW, baseline - top);
+    } else {
+      // Below threshold portion: dimmer red
+      const threshY = yv(threshold);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+      ctx.fillRect(xi(i) - barW/2, threshY, barW, baseline - threshY);
+      // Above threshold portion: brighter red
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+      ctx.fillRect(xi(i) - barW/2, top, barW, threshY - top);
+    }
+  }
+  // Prominent threshold line
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#f59e0bcc';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, yv(threshold));
+  ctx.lineTo(W - pad.r, yv(threshold));
+  ctx.stroke();
+})();
+</script>
+</body>
+</html>
