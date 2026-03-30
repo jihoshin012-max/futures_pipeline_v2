@@ -2,7 +2,7 @@
 
 > **Archetype:** rotational
 > **Instrument:** NQ
-> **Status:** draft
+> **Status:** FAILED at Step 6 (live sim) — see journal entry 2026-03-30
 > **Created:** 2026-03-29
 > **Parent study:** `rotational-NQ-prompt-scale-detection.md`
 > **Depends on:** Track A (`rotational-NQ-prompt-entry-signals.md`) and Track B (`rotational-NQ-prompt-fade-confirmation.md`) — run both first. Update this prompt's baseline and test weeks with the winning entry config from A + B before executing.
@@ -12,15 +12,28 @@
 
 ## Problem
 
-The chop-filtered strategy (82% WR, 18% SR) loses money on hard stops: each stop costs ~$600 (60 ticks × $5 × 2 contracts). With an 18% stop rate across ~10K cycles, stops are the dominant loss source — verify the actual gross loss breakdown in Step 1 before proceeding. If mid-trade signals can identify losing trades before the hard stop hits, early exit at a smaller loss preserves capital.
+The Track A+B filtered strategy (85% WR, 15% SR, ~6,500 cycles) loses money on hard stops: each stop costs ~$600 (60 ticks × $5 × 2 contracts). With a 15% stop rate, stops account for most of the gross losses — verify the actual gross loss breakdown in Step 1 before proceeding. If mid-trade signals can identify losing trades before the hard stop hits, early exit at a smaller loss preserves capital.
 
-This prompt focuses on **reducing losses on losing trades** — not extending winners or improving entries. Entry decisions are handled by `rotational-NQ-prompt-entry-signals.md`.
+This prompt focuses on **reducing losses on losing trades** — not extending winners or improving entries. Entry decisions are handled by Track A (`rotational-NQ-prompt-entry-signals.md`) and Track B (`rotational-NQ-prompt-fade-confirmation.md`).
 
 ## Prior art
 
 - **Choppiness filter:** Validated entry gate. P1 E[R]=$52.57, P2 E[R]=$55.28. WR=82%, SR=18%.
+- **Track A (entry signals):** dR2 <= -0.40, dSlope <= -2.0. P1 E[R] $53.43 → $63.22 (+18.3%). P2 PASS.
+- **Track B (fade confirmation):** fade_confirm < 0.40. P1 E[R] $63.22 → $78.16 (+24%). P2 PASS (E[R]=$80.55, PF=1.91).
 - **Feature discovery (Steps 5-6):** Choppiness, abs_slope, R2 showed signal at entry. dR2 and dSlope (rate of change during trade) are untested.
 - **SC alignment:** Within-bar chop timing differs between Python and SC. Management features that rely on precise bar-level timing may have similar alignment challenges.
+
+### Track B critical finding — hypothesis inversion
+
+**All Track B hypotheses were inverted.** The strategy profits from mean reversion: entering when the pullback has MAXIMUM momentum (price near support, speed against you, volume against you, no reversal bars) gives the most room for reversion. Entering during exhaustion (stalling pullback) is WORSE.
+
+**Implication for Track C:** Several Track C hypotheses may also be inverted. Specifically:
+- **Skip add:** Currently hypothesized to skip when momentum is against you (dR2 positive, mae_increment high). But if the strategy profits from strong momentum, high momentum at the add point might be FAVORABLE for doubling down — the mean reversion has more fuel. Test both directions.
+- **Early exit:** Currently hypothesized to exit when signed signals turn against position. But if strong opposing momentum predicts good outcomes (Track B finding), the early-exit signals may need inversion too. Test both directions.
+- **Tighten stop:** May be unaffected — tightening based on range expansion is about volatility, not directional momentum.
+
+**Action:** For each signal in Step 2, test both directions. Do not assume the intuitive direction is correct — Track B proved it can be backwards.
 
 ## Candidates
 
@@ -35,7 +48,7 @@ signed_chop = (close[i] - close[i-lb+1]) / summed_range
 - If LONG and signed_chop turns strongly negative → displacement building against position
 - If SHORT and signed_chop turns strongly positive → same
 
-**Hypothesis:** Signed chop turning against position mid-trade predicts stops.
+**Hypothesis:** Signed chop turning against position mid-trade predicts stops. **Test both directions** — Track B showed opposing momentum can be favorable for mean reversion.
 
 ### 2. dR2/dt (trend formation rate)
 
@@ -45,7 +58,7 @@ dr2 = r2[i] - r2[i-1]
 
 - Rising R2 mid-trade = trend forming = dangerous for rotation strategy
 
-**Hypothesis:** Rising dR2 mid-trade predicts stops. Could trigger early exit or skip add.
+**Hypothesis:** Rising dR2 mid-trade predicts stops. Could trigger early exit or skip add. **Test both directions** — rising dR2 at entry was unfavorable (Track A), but mid-trade context may differ.
 
 ### 3. dSlope/dt (slope acceleration)
 
@@ -55,7 +68,7 @@ dslope = abs_slope[i] - abs_slope[i-1]
 
 - Rising slope = trend strengthening
 
-**Hypothesis:** Rising dSlope mid-trade confirms trend formation alongside dR2.
+**Hypothesis:** Rising dSlope mid-trade confirms trend formation alongside dR2. **Test both directions.**
 
 ### 4. Signed slope mid-trade
 
@@ -65,7 +78,7 @@ signed_slope = slope[i]
 
 - Direction of regression line relative to position direction
 
-**Hypothesis:** Signed slope strongly against position mid-trade predicts stops.
+**Hypothesis:** Signed slope strongly against position mid-trade predicts stops. **Test both directions** — Track B showed opposing directional signals can be favorable.
 
 ---
 
@@ -128,11 +141,11 @@ d_range_ratio = range_ratio[i] - range_ratio[i-1]
 
 ### Feature-triggered actions (require signal evaluation)
 
-| Action | Mechanic | Trigger candidates |
-|---|---|---|
-| **Early exit** | Flatten at current price before hard stop. Accept smaller loss. | signed_chop/slope against position, dR2 rising, hold_ratio > 1.5x, mae_proximity > 0.60 |
-| **Skip add** | When 10pts against, do NOT add martingale contract. Stay at 1. | dR2 positive, mae_increment high, range_ratio > 1.5 |
-| **Tighten stop** | Reduce hard stop from 60 ticks to smaller value (e.g., 40). | dslope (test both abs and signed versions), range_ratio expanding |
+| Action | Mechanic | Trigger candidates | Note |
+|---|---|---|---|
+| **Early exit** | Flatten at current price before hard stop. Accept smaller loss. | signed_chop/slope, dR2, hold_ratio, mae_proximity | Test both directions for regime signals — intuitive direction may be inverted (Track B finding) |
+| **Skip add** | When 10pts against, do NOT add martingale contract. Stay at 1. | dR2, mae_increment, range_ratio | Test both: skip when momentum high OR low — strong momentum at add point may favor doubling down |
+| **Tighten stop** | Reduce hard stop from 60 ticks to smaller value (e.g., 40). | dslope (abs and signed), range_ratio | Range expansion may be less affected by inversion — volatility signal, not directional |
 
 Note on dSlope: `abs_slope[i] - abs_slope[i-1]` loses directionality — steepening in your favor is different from steepening against you. However, for a rotation strategy, any steepening (either direction) indicates trending, which is bad for the rotation mechanic. Test both `d(abs_slope)` and `d(signed_slope)` to see which is more predictive.
 
@@ -146,7 +159,7 @@ Break-even stop is a fixed rule, not a feature-triggered action. It doesn't depe
 
 ### Not tested
 
-**"Let winners run" is NOT tested.** Extending beyond 10pt reversal exit changes the strategy's fundamental mechanic and requires separate investigation.
+**"Let winners run" is NOT tested here.** Extending beyond 10pt reversal exit is Track D's scope. See `rotational-NQ-prompt-extended-hold.md`.
 
 ---
 
@@ -154,9 +167,11 @@ Break-even stop is a fixed rule, not a feature-triggered action. It doesn't depe
 
 Use the winning config from Track A + Track B (whatever survived). Update these numbers with the final entry-filtered P1 results before proceeding. The entry filters change the cycle population — different cycles, different WR/SR, different E[R]. Re-select test weeks from the new filtered distribution (rank weeks by filtered PnL, pick WEAKEST/LOW/MID/GOOD/BEST).
 
-**Track A winner (known):** chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0. P1: 6,624 cycles, 83% WR, 17% SR, E[R]=$63.22.
+**Track A winner:** chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0. P1: 6,624 cycles, 83% WR, 17% SR, E[R]=$63.22. P2: E[R]=$70.40.
 
-**Track B winner:** TBD — update baseline after Track B completes. If Track B fails, use Track A numbers above.
+**Track B winner:** fade_confirm < 0.40. P1: 6,496 cycles, 85% WR, 15% SR, E[R]=$78.16. P2: E[R]=$80.55, PF=1.91, 98% retention.
+
+**Combined baseline for Track C:** chop < 0.10 + dR2 <= -0.40 + dSlope <= -2.0 + fade_confirm < 0.40.
 
 ## Locked files (DO NOT MODIFY)
 
@@ -175,49 +190,39 @@ Use the winning config from Track A + Track B (whatever survived). Update these 
 
 ## Test Data
 
-Same 5 weeks as entry-signals prompt (chop-filtered P1 distribution):
+Select 5 representative weeks from P1 **Track A+B filtered** performance. The A+B filters change the cycle population from what Tracks A and B used. Re-rank weeks by A+B filtered PnL and select WEAKEST/LOW/MID/GOOD/BEST. This is done in Step 0 below.
 
-| Week | Dates | Category | Filtered Cycles | Filtered PnL | E[R] |
-|---|---|---|---|---|---|
-| W43 | 2025-10-20 to 2025-10-24 | WEAKEST | 557 | $17,423 | $31.28 |
-| W39 | 2025-09-22 to 2025-09-26 | LOW | 438 | $18,285 | $41.75 |
-| W50 | 2025-12-08 to 2025-12-12 | MID | 803 | $41,286 | $51.41 |
-| W46 | 2025-11-10 to 2025-11-14 | GOOD | 1,022 | $54,599 | $53.42 |
-| W47 | 2025-11-17 to 2025-11-21 | BEST | 2,227 | $120,697 | $54.20 |
-
-**Note:** W47 has 4x more cycles than W43. Per-week breakdown is the primary view.
+**Note:** Per-week breakdown is the primary view. Watch for W47-style cycle count asymmetry in the new ranking.
 
 ---
 
 ## Test Sequence
 
-### Step 0: Instrument the simulator (shared with entry-signals prompt)
+### Step 0: Select test weeks + instrument simulator
 
-Add optional `on_bar_in_trade` callback to `run_sim_filtered` (same pattern as existing `on_cycle_exit`). Records per-bar snapshots during each trade. Default None, no behavior change.
+**Week selection:** Run Track A+B combined config across all P1 weeks. Rank by filtered PnL. Select WEAKEST/LOW/MID/GOOD/BEST. Record the table here before proceeding.
 
-**Verify:** Cycle outputs identical with callback=None vs callback=recording_fn.
+**Instrumentation:** If the `on_bar_in_trade` callback was added during Track A, reuse it. Otherwise add it (same pattern as `on_cycle_exit`, default None, no behavior change). Verify cycle identity.
 
-If already completed for entry-signals prompt, skip.
+### Step 1: Compute and tag
 
-### Step 1: Compute and tag (shared with entry-signals prompt)
+Run Track A+B combined config on the 5 test weeks with instrumentation enabled. Record per-bar snapshots with: price, current_pnl_ticks, mfe_ticks, mae_ticks, bar_offset, all regime features (signed_chop, dchop, d2chop, signed_slope, dr2, dslope).
 
-Run instrumented sweep on 5 test weeks. Record per-bar snapshots with: price, current_pnl_ticks, mfe_ticks, mae_ticks, bar_offset, all regime features (signed_chop, dchop, d2chop, signed_slope, dr2, dslope).
+**Do NOT reuse Track A or B output files** — Track C runs on the A+B filtered population, which is a different cycle set.
 
 **What's NOT pre-computed in Step 1:** Trade-behavior features (hold_ratio, mfe_rate, mfe_retracement, mae_increment, mae_proximity, range_ratio, d_range_ratio) are derived from the raw snapshot values during analysis (Steps 2-4). hold_ratio in particular depends on median_bars_to_reversal which requires a trailing window size N — a parameter not determined until Step 3. Store the raw inputs (bar_offset, mfe_ticks, mae_ticks, bar ranges); compute derived ratios during analysis.
 
 **Resolution:** Regime features computed on 250-tick aggregated bars. Raw trade data (price, mfe, mae, ranges) recorded per 250-tick bar during the trade.
 
 **Output:**
-- `lab/output/rotational-NQ-scale-detection/regime-direction-tagged-cycles.csv` (per-cycle)
-- `lab/output/rotational-NQ-scale-detection/regime-direction-intrade-bars.csv` (per-bar snapshots with price)
-
-If Track A already ran Steps 0-1, reuse output only if Track A FAILED (baseline unchanged). If Track A SUCCEEDED, re-run Step 1 with the new entry filter active to generate snapshots of the updated cycle population.
+- `lab/output/rotational-NQ-scale-detection/trade-mgmt-tagged-cycles.csv` (per-cycle)
+- `lab/output/rotational-NQ-scale-detection/trade-mgmt-intrade-bars.csv` (per-bar snapshots with price)
 
 ### Step 2: In-trade correlation analysis
 
-For cycles that ended in HARD_STOP vs REVERSAL, compare feature trajectories:
-- **Regime signals:** Do losing trades show rising dR2, rising dSlope, signed signals turning against position?
-- **Trade-behavior signals:** Do losing trades show low mfe_rate, high hold_ratio, high mae_proximity, expanding range_ratio?
+For cycles that ended in HARD_STOP vs REVERSAL, compare feature trajectories. **Test both directions for regime signals** — Track B showed intuitive direction can be inverted:
+- **Regime signals:** For each of signed_chop, dR2, dSlope, signed_slope: does HIGH or LOW values mid-trade correlate with stops? Check both. Do not assume "against position = bad."
+- **Trade-behavior signals:** Do losing trades show low mfe_rate, high hold_ratio, high mae_proximity, expanding range_ratio? (These are trade health metrics — less likely to invert.)
 - Do winning trades show stable/favorable trajectories?
 - **Lead time:** At what point do signals diverge? How many bars before the outcome? Compute the median divergence point for each feature.
 
@@ -241,7 +246,7 @@ Replay feature trajectories for ALL cycles (HARD_STOP and REVERSAL). Evaluate ea
 
 **Early exit replay:**
 - For every HARD_STOP cycle: if we had exited when the signal fired, what would the loss have been vs -$600?
-- For every REVERSAL cycle: did the signal fire? If so, what was the exit price at that point — the trade would have been cut at a smaller win or small loss instead of the full +$200 reversal.
+- For every REVERSAL cycle: did the signal fire? If so, what was the exit price at that point — the trade would have been cut at a smaller win or small loss instead of the full reversal win (varies by cycle — compute actual PnL at signal bar from the per-bar snapshots).
 - Net benefit = (savings on stops) - (cost on prematurely cut winners)
 - **Winner-touch rate:** Must fire on < 20% of REVERSAL cycles.
 
@@ -277,23 +282,15 @@ Test each winning management action in isolation first:
 - Run managed sweep with ONLY tighten stop enabled. All other actions disabled.
 - Run managed sweep with ONLY break-even stop enabled (mechanical rule — test standalone).
 
-Compare each against chop-only baseline. Per-week breakdown is primary view.
+Compare each against Track A+B baseline. Per-week breakdown is primary view.
 
 Then combine the actions that individually improved PnL and test together. If the combined result is worse than the best individual action, the actions interfere — use the best individual only.
 
-### Step 7: Combine with entry signals (if entry-signals prompt also succeeded)
-
-If `rotational-NQ-prompt-entry-signals.md` produced a winning entry feature, test both together: entry filter narrows entries, management modifies surviving trades.
-
-**Interaction effect:** Entry filter changes which trades exist for management. Report all three: entry-only, management-only, combined. Combined must outperform the better individual to justify complexity.
-
-Skip if entry-signals prompt failed or hasn't been run.
-
-### Step 8: Full P1 validation
+### Step 7: Full P1 validation
 
 Run on full P1. Per-week breakdown required.
 
-### Step 9: Sanity check
+### Step 8: Sanity check
 
 Randomize each feature-triggered action independently:
 - **Early exit:** Random exit timing at matching frequency (10 seeds).
@@ -304,7 +301,7 @@ Randomize each feature-triggered action independently:
 
 Key question for feature-triggered actions: does the specific signal outperform random application of the same action at the same frequency?
 
-### Step 10: Handoff to bench
+### Step 9: Handoff to bench
 
 Freeze configuration. Write frozen params. Create verify report.
 
@@ -324,7 +321,7 @@ Bench runs: stress tests, P2 holdout (ONE SHOT), verdict.
 - Net benefit positive across ALL test weeks (not just pooled)
 - Winner-touch rate < 20% for early exit signals (does not apply to skip add, break-even, tighten)
 - Improvement survives full P1 per-week
-- P2 E[R] does not degrade below $55.28 — tested in bench
+- P2 E[R] does not degrade below Track A+B baseline ($80.55) — tested in bench
 
 **Kill criteria:**
 - After Step 2: no trajectory divergence → stop
@@ -344,4 +341,4 @@ Bench runs: stress tests, P2 holdout (ONE SHOT), verdict.
 
 ## Pipeline boundary
 
-Steps 0-9 execute in lab. Step 10 hands off to bench. Do not run stress tests or P2 in lab.
+Steps 0-8 execute in lab. Step 9 hands off to bench. Do not run stress tests or P2 in lab.
