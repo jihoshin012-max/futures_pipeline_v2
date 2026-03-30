@@ -1,0 +1,8 @@
+locked: 2026-03-30
+archetype: rotational
+instrument: NQ
+variant: fade-confirmation
+holdout: 2025-12-17 to 2026-03-13
+config: SD=10 HS=60 depth_1 MCS=2 chop<0.10 lb=3 + dr2<=-0.40 + dslope<=-2.0 + fc<0.40
+cycles: 6742
+result: PASS

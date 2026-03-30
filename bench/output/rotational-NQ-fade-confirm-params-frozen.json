@@ -1,0 +1,108 @@
+{
+  "archetype": "rotational",
+  "instrument": "NQ",
+  "variant": "fade-confirmation",
+  "version": "1.0",
+  "frozen_date": "2026-03-30",
+  "source": "fade-confirmation study Steps 0-7 (rotational-NQ-prompt-fade-confirmation.md)",
+  "parent": "rotational-NQ-entry-signals-params-frozen.json (entry-signals variant v1.0)",
+
+  "strategy_params": {
+    "step_dist_pts": 10.0,
+    "hard_stop_ticks": 60,
+    "initial_qty": 1,
+    "max_levels": 1,
+    "max_contract_size": 2,
+    "max_fades": 0
+  },
+
+  "choppiness_filter": {
+    "enabled": true,
+    "threshold": 0.10,
+    "lookback_bars": 3,
+    "bar_size_ticks": 250,
+    "computation": "abs(close[i] - close[i-lookback+1]) / sum(high[j] - low[j] for j in [i-lookback+1..i])",
+    "gate_behavior": "skip entry when choppiness >= threshold"
+  },
+
+  "entry_signal_filter": {
+    "enabled": true,
+    "features": {
+      "dr2": {
+        "threshold": -0.40,
+        "direction": "<=",
+        "computation": "r2[i] - r2[i-1] where r2 = linear regression R-squared on close over lookback bars",
+        "interpretation": "negative = R2 falling = trend dissolving = favorable for rotation entry"
+      },
+      "dslope": {
+        "threshold": -2.0,
+        "direction": "<=",
+        "computation": "abs(slope[i]) - abs(slope[i-1]) where slope = linear regression slope on close",
+        "interpretation": "negative = abs_slope falling = trend weakening = favorable for rotation entry"
+      }
+    },
+    "lookback_bars": 3,
+    "bar_size_ticks": 250,
+    "gate_behavior": "skip entry when dr2 > -0.40 OR dslope > -2.0 (applied after chop filter)"
+  },
+
+  "fade_confirm_filter": {
+    "enabled": true,
+    "threshold": 0.40,
+    "direction": "<",
+    "computation": {
+      "LONG": "(entry_price - prev_bar_low) / (prev_bar_high - prev_bar_low)",
+      "SHORT": "(prev_bar_high - entry_price) / (prev_bar_high - prev_bar_low)"
+    },
+    "prev_bar": "last completed 250-tick aggregated bar before the entry bar",
+    "guard": "if prev_bar range == 0, set fade_confirm = 0.5 (neutral, passes filter)",
+    "guard_nan": "if prev_bar data unavailable (warmup), allow entry",
+    "interpretation": "low fade_confirm = entry price near support/resistance side of previous bar = pullback has displaced forcefully = favorable for mean reversion",
+    "gate_behavior": "skip entry when fade_confirm >= 0.40 (applied after entry signal filter)"
+  },
+
+  "validation": {
+    "p1_track_a_baseline": {
+      "cycles": 6624,
+      "wr": 0.83,
+      "sr": 0.17,
+      "er": 63.22,
+      "total_pnl": 418785
+    },
+    "p1_fade_filtered": {
+      "cycles": 6496,
+      "wr": 0.85,
+      "sr": 0.15,
+      "er": 78.16,
+      "total_pnl": 507737,
+      "retention": 0.98
+    },
+    "improvement": {
+      "delta_er": 14.94,
+      "delta_er_pct": 23.6,
+      "weeks_improved": 12,
+      "weeks_total": 12,
+      "weeks_degraded": 0
+    },
+    "sanity_check": "PASS - fade_confirm E[R]=$78.16 beats all 10 random seeds (max random=$5.56, margin=$72.60)",
+    "kill_gates_passed": [
+      "Step 2: 5/6 features SR spread > 5pt",
+      "Step 6: P1 improvement 23.6% > 5%"
+    ]
+  },
+
+  "feature_selection": {
+    "tested": ["fade_confirm", "range_decay", "avg_range_decay", "flow_confirm", "direction_bars", "fade_speed"],
+    "killed_at_step2": ["range_decay (3.0pt SR spread, marginal)"],
+    "killed_at_step3_redundancy": [
+      "flow_confirm (rho=0.72 with fade_speed, weaker)",
+      "direction_bars (rho=0.67 with fade_speed, weakest in cluster)",
+      "avg_range_decay (5.1pt SR spread, moderate but non-monotonic)"
+    ],
+    "survivors_step3": ["fade_confirm (23.4pt SR spread, rho=0.20 with fade_speed)", "fade_speed (19.7pt SR spread)"],
+    "final_winner": "fade_confirm alone (12/12 weeks improved vs 11/12 for combined; 98% vs 82% retention)",
+    "dropped_at_step6": "fade_speed (combined filter hurts W48, lower retention, more complex for marginal total PnL gain)"
+  },
+
+  "key_finding": "All hypotheses were inverted: fades work best when the pullback is at maximum momentum (low fade_confirm = entry near support), NOT when exhausting. Volume (flow_confirm) showed signal for the first time but was redundant with fade_speed."
+}

@@ -1,0 +1,125 @@
+{
+  "archetype": "rotational",
+  "instrument": "NQ",
+  "variant": "fade-confirmation",
+  "holdout_period": "20251217-20260313",
+  "date_produced": "2026-03-30",
+  "n_variants_tested": 3,
+  "note": "Third variant tested on this holdout period (chop, entry-signals, fade-confirmation). No Bonferroni needed - fade-confirmation is additive to entry-signals, not an alternative.",
+  "verdict": "PASS",
+  "monitoring_conditions": [],
+  "hard_gates": {
+    "H1_profit_factor": {
+      "threshold": 1.2,
+      "observed": 1.9083,
+      "result": "PASS"
+    },
+    "H2_min_cycles": {
+      "threshold": 5000,
+      "observed": 6742,
+      "result": "PASS"
+    },
+    "H3_serial_correlation": {
+      "threshold": "2/sqrt(N)",
+      "observed": [
+        {
+          "lag": 1,
+          "r": -0.010842,
+          "thresh": 0.024358,
+          "ok": "True"
+        },
+        {
+          "lag": 2,
+          "r": 0.008141,
+          "thresh": 0.024358,
+          "ok": "True"
+        },
+        {
+          "lag": 3,
+          "r": -0.012341,
+          "thresh": 0.024358,
+          "ok": "True"
+        },
+        {
+          "lag": 4,
+          "r": -0.004583,
+          "thresh": 0.024358,
+          "ok": "True"
+        },
+        {
+          "lag": 5,
+          "r": 0.003234,
+          "thresh": 0.024358,
+          "ok": "True"
+        }
+      ],
+      "result": "PASS"
+    },
+    "H4_bootstrap_p5": {
+      "threshold": 0,
+      "observed": 505521.89,
+      "result": "PASS"
+    },
+    "H5_kelly": {
+      "threshold_max": 0.5,
+      "threshold_min_half": 0.05,
+      "observed_full": 0.4062,
+      "observed_half": 0.2031,
+      "result": "PASS"
+    }
+  },
+  "soft_gates": {
+    "S1_sharpe": {
+      "threshold": 1.25,
+      "observed": 21.0608,
+      "result": "PASS"
+    },
+    "S2_sortino": {
+      "threshold": 1.5,
+      "observed": 143674709.868,
+      "result": "PASS"
+    },
+    "S3_calmar": {
+      "threshold": 0.75,
+      "observed": 2009.3432,
+      "result": "PASS"
+    },
+    "S4_wr_headroom": {
+      "threshold_pct": 5,
+      "observed_pct": 12,
+      "result": "PASS"
+    },
+    "S5_slippage_2t": {
+      "threshold_pf": 1.0,
+      "observed_pf": 1.5768,
+      "result": "PASS"
+    },
+    "S6_max_dd_pct": {
+      "threshold_pct": 15,
+      "observed_dollar": 1135.08,
+      "note": "needs account size"
+    }
+  },
+  "metrics": {
+    "cycles": 6742,
+    "wr": 0.8535,
+    "sr": 0.1446,
+    "pf": 1.9083,
+    "total_pnl": 543039.36,
+    "er": 80.55,
+    "sharpe": 21.0608,
+    "sortino": 143674709.868,
+    "calmar": 2009.3432,
+    "max_dd_dollar": 1135.08,
+    "kelly_full": 0.4062,
+    "kelly_half": 0.2031
+  },
+  "comparison_vs_entry_signals": {
+    "entry_signals_er": 70.4,
+    "fade_confirm_er": 80.55,
+    "delta_er": 10.15,
+    "entry_signals_cycles": 6927,
+    "fade_confirm_cycles": 6742,
+    "retention": 0.9733
+  }
+}
