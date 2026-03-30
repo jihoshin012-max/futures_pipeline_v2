@@ -58,3 +58,33 @@ Calibration: 2025-09-21 to 2025-12-14
 Full results: `lab/output/zone-touch-NQ-baseline-summary.md`
 Raw data: `lab/output/zone-touch-NQ-baseline-raw.csv`
 
+
+---
+
+## 2026-03-28 — Prompt 0 Baseline
+
+Calibration: 2025-09-21 to 2025-12-14
+
+
+### Key Numbers
+
+- Median R:R at MFE: 0.85
+- Win rate at 1R: 45.0%
+- Win rate at 2R: 22.3%
+- Break rate: 22.4%
+- Comeback rate (≥20pt): 53.2%
+- Median time-to-MFE: 27.0min
+
+### Review Gate Answers
+
+1. Raw edge? -> (check median R:R > 1.0 at any sweep)
+2. Width breakpoint? -> (see C4 width vs R:R)
+3. Ray improvement? -> (see C4 ray impact)
+4. Time cap sufficient? -> 100.0% resolved by 4hr
+5. Resolved vs ZTE seq? -> (see C5)
+6. Tick cost vs 3t? -> (see C4 cost)
+7. Comeback rate? -> 53.2% after ≥20pt MFE
+
+Full results: `lab/output/zone-touch-NQ-baseline-summary.md`
+Raw data: `lab/output/zone-touch-NQ-baseline-raw.csv`
+

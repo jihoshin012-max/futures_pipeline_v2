@@ -15,8 +15,8 @@ individual feature signal strength.
 Prompt 0 must be complete. Required outputs:
 - `lab/output/zone-touch-NQ-baseline-raw.csv` — per-touch simulation results
 - `lab/output/zone-touch-NQ-baseline-summary.md` — baseline PF, R:R, win rates
-- Best sweep combination identified (entry offset, stop buffer, time cap)
-- Baseline PF at 1R for the best combo (the number to beat)
+- Top sweep combinations identified from baseline
+- Baseline PF at 1R per combo (the numbers to beat)
 
 ## Data
 
@@ -24,9 +24,24 @@ Prompt 0 must be complete. Required outputs:
 Read calibration dates from `_config/period-config.md`
 (calibration: 2025-09-21 to 2025-12-14, 3,278 touches).
 
-Use the best sweep combination from Prompt 0 as the fixed trade
-setup for all screening. Do not re-sweep — the structural stop,
-entry offset, buffer, and time cap are locked from baseline.
+Filter the baseline raw CSV to `Period == 'calibration'` and to
+the three representative sweep combos below.
+
+## Representative Sweep Combos
+
+Screen features against three combos representing different trade
+styles. This prevents features that only work with one setup from
+passing screening.
+
+| Combo | Offset | Buffer | Cap | Style |
+|-------|--------|--------|-----|-------|
+| A | 40 | 0 | 240 | Aggressive: deep entry, tight stop, long hold |
+| B | 20 | 10 | 240 | Balanced: moderate entry, buffered stop |
+| C | 0 | 10 | 120 | Conservative: edge entry, buffered stop, short hold |
+
+**Update these combos** from Prompt 0 final results if the re-run
+shifts the rankings. The styles should represent aggressive,
+balanced, and conservative trade setups from the top performers.
 
 ### Source Files
 
@@ -43,12 +58,13 @@ entry offset, buffer, and time cap are locked from baseline.
 
 ## Screening Method
 
-For each candidate feature:
+For each candidate feature, **repeat the following for each of the
+three representative combos (A, B, C):**
 
 1. **Bin** the calibration touches into terciles (low/mid/high) or
    categories based on the feature's natural distribution
 2. **Compute** PF at 1R, win rate at 1R, median R:R, and touch count
-   per bin using the locked sweep combo's tick-level simulation results
+   per bin using that combo's tick-level simulation results
 3. **Measure signal strength:** the spread between best bin and worst
    bin (R/P spread for continuous features, or category spread for
    categorical features)
@@ -58,12 +74,18 @@ For each candidate feature:
    and Replica-B per `_config/period-config.md`). Does the same bin
    rank as best/worst on both halves?
 
-A feature passes screening if:
-- Spread between best and worst bin PF > [baseline PF × 0.2]
-  (meaningful improvement over baseline)
+### Pass Criteria (multi-combo)
+
+A feature passes screening if **at least 2 of 3 combos** meet ALL of:
+- Spread between best and worst bin PF > [that combo's baseline PF × 0.2]
 - MWU p-value < 0.05
 - Best bin is the same on both Replica-A and Replica-B
-- Best bin has >= 100 touches (sufficient sample)
+- Best bin has >= 100 touches
+
+A feature that passes on all 3 combos is **STRONG**.
+A feature that passes on 2 of 3 is **PASS**.
+A feature that passes on only 1 is **WEAK**.
+A feature that passes on 0 is **FAIL**.
 
 ---
 
@@ -133,7 +155,7 @@ at the moment of the zone touch.
 
 ## Screening Output Per Feature
 
-For each candidate feature, produce:
+For each candidate feature, produce **per combo (A, B, C):**
 
 | Output | Content |
 |--------|---------|
@@ -141,17 +163,25 @@ For each candidate feature, produce:
 | Per-bin table | Touch count, PF at 1R, win rate at 1R, median R:R, median MFE |
 | Signal spread | Best bin PF - worst bin PF |
 | MWU p-value | Between best and worst bin PnL distributions |
-| Replica stability | Best bin same on A and B? Spread on A? Spread on B? |
+| Replica stability | Best bin same on Replica-A and Replica-B? |
 | RTH vs ETH split | Does the feature work in both sessions or only one? |
-| Verdict | PASS / WEAK / FAIL with reasoning |
+
+**Then aggregate across combos:**
+
+| Output | Content |
+|--------|---------|
+| Combos passed | How many of A/B/C meet all criteria |
+| Consistency | Is the best bin the same across combos? |
+| Verdict | STRONG / PASS / WEAK / FAIL |
 
 ### Verdict Criteria
 
 | Verdict | Criteria |
 |---------|---------|
-| PASS | Spread > threshold, p < 0.05, same best bin on A and B, n >= 100 |
-| WEAK | Spread > threshold but fails replication OR p between 0.05-0.10 |
-| FAIL | Spread below threshold, or p > 0.10, or best bin flips between A and B |
+| STRONG | All 3 combos pass (spread > threshold, p < 0.05, replica stable, n >= 100) |
+| PASS | 2 of 3 combos pass |
+| WEAK | 1 of 3 combos passes, OR 2 pass but best bin differs across combos |
+| FAIL | 0 combos pass |
 
 ---
 
@@ -184,11 +214,14 @@ After all features are screened individually:
 
 ### Ranking Table
 
-| Rank | Feature | Spread | MWU p | Replica | RTH Spread | ETH Spread | v3.2 Rank | Verdict |
-|------|---------|--------|-------|---------|------------|------------|-----------|---------|
-| 1 | | | | | | | | |
-| 2 | | | | | | | | |
+| Rank | Feature | Combos Passed | Avg Spread | Best Bin Consistent? | RTH | ETH | v3.2 Rank | Verdict |
+|------|---------|--------------|-----------|---------------------|-----|-----|-----------|---------|
+| 1 | | /3 | | | | | | |
+| 2 | | /3 | | | | | | |
 | ... | | | | | | | | |
+
+**Avg Spread** = average of best-worst bin PF spread across the combos that passed.
+**Best Bin Consistent** = same best bin across all passing combos (Yes/No).
 
 ---
 

@@ -31,10 +31,31 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent  # lab/workflows/dat
 DATA = ROOT / 'data'
 OUTPUT = ROOT / 'lab' / 'output'
 
-# _config/instruments.md — NQ
-TICK_SIZE = 0.25
-TICK_VALUE = 5.00
-EXPERIMENT_COST_TICKS = 3
+# Read from _config/instruments.md
+def _parse_instruments():
+    """Parse NQ constants from _config/instruments.md."""
+    path = ROOT / '_config' / 'instruments.md'
+    tick_size, tick_value, cost_ticks = 0.25, 5.00, 3  # fallback
+    if path.exists():
+        section = ''
+        for line in path.read_text(encoding='utf-8').splitlines():
+            if line.startswith('## NQ'):
+                section = 'NQ'
+            elif line.startswith('## ') and section == 'NQ':
+                section = ''
+            elif line.startswith('## Experiment Defaults'):
+                section = 'defaults'
+            elif line.startswith('## ') and section == 'defaults':
+                section = ''
+            elif section == 'NQ' and '|' in line and 'tick_size' in line:
+                tick_size = float(line.split('|')[2].strip())
+            elif section == 'NQ' and '|' in line and 'tick_value' in line:
+                tick_value = float(line.split('|')[2].strip())
+            elif section == 'defaults' and '|' in line and 'experiment_cost_ticks' in line:
+                cost_ticks = int(line.split('|')[2].strip())
+    return tick_size, tick_value, cost_ticks
+
+TICK_SIZE, TICK_VALUE, EXPERIMENT_COST_TICKS = _parse_instruments()
 
 # _config/period-config.md
 # Prompt 0 uses ALL data (no fitting = no contamination)
@@ -48,7 +69,9 @@ ENTRY_OFFSETS = [0, 10, 20, 40]        # ticks inside zone edge
 STOP_BUFFERS = [0, 5, 10, 20]          # ticks past structural level
 TIME_CAPS_MIN = [30, 60, 120, 240]     # minutes
 
-# Comeback thresholds (points, not ticks)
+# Comeback thresholds in POINTS (1 NQ point = 4 ticks = 1.0 price units).
+# These compare directly against excursion which is in price units,
+# so 10 here means 10 points = 10.0 price movement from entry.
 COMEBACK_THRESHOLDS_PTS = [10, 20, 30]
 COMEBACK_RETURN_TICKS = 5              # within 5 ticks of entry edge
 
@@ -97,17 +120,11 @@ def tag_session(sim_df):
 # DATA LOADING
 # ═══════════════════════════════════════════════════════════════
 
-def load_zte():
-    """Load ZTE calibration + holdout data, remove VP_RAY, drop SC columns."""
-    print("[load] ZTE data (calibration + holdout)...")
-    dfs = []
-    for role in ['calibration', 'holdout']:
-        path = DATA / f'NQ-zte-{role}.csv'
-        d = pd.read_csv(path)
-        d['Period'] = role
-        print(f"  {role}: {len(d)} rows")
-        dfs.append(d)
-    df = pd.concat(dfs, ignore_index=True)
+def load_zte_single(role):
+    """Load ZTE data for one period. Remove VP_RAY, drop SC columns."""
+    path = DATA / f'NQ-zte-{role}.csv'
+    df = pd.read_csv(path)
+    df['Period'] = role
     n_raw = len(df)
 
     # Remove VP_RAY
@@ -121,65 +138,83 @@ def load_zte():
     df['DateTime'] = pd.to_datetime(df['DateTime'])
     df = df.sort_values('DateTime').reset_index(drop=True)
 
-    # Build TouchID for ray join
+    # Build TouchID for ray join (no period prefix needed — single period)
     df['TouchID'] = (df['BarIndex'].astype(str) + '_'
                      + df['TouchType'] + '_'
                      + df['SourceLabel'])
 
-    print(f"  combined: raw={n_raw}, VP_RAY removed={vp_count}, "
-          f"total touches: {len(df)}")
+    print(f"  {role}: raw={n_raw}, VP_RAY removed={vp_count}, "
+          f"touches: {len(df)}")
     return df
 
 
-def load_tick_data():
-    """Load 1-tick bar data (Date, Time, Last only) for both periods."""
-    print("[load] 1-tick data (calibration + holdout, this may take a few minutes)...")
+def load_tick_data_single(role):
+    """Load 1-tick bar data (Date, Time, Last only) for one period."""
+    print(f"[load] 1-tick data ({role})...")
     t0 = _time.time()
 
-    dfs = []
-    for role in ['calibration', 'holdout']:
-        path = DATA / f'NQ-1tick-{role}.csv'
-        d = pd.read_csv(
-            path,
-            usecols=[0, 1, 5],
-            skipinitialspace=True,
-            dtype={0: str, 1: str, 5: np.float64},
-            header=0,
-        )
-        d.columns = ['Date', 'Time', 'Last']
-        d['DateTime'] = pd.to_datetime(d['Date'] + ' ' + d['Time'])
-        d = d[['DateTime', 'Last']]
-        print(f"  {role}: {len(d):,} rows")
-        dfs.append(d)
-
-    df = pd.concat(dfs, ignore_index=True)
+    path = DATA / f'NQ-1tick-{role}.csv'
+    df = pd.read_csv(
+        path,
+        usecols=[0, 1, 5],
+        skipinitialspace=True,
+        dtype={0: str, 1: str, 5: np.float64},
+        header=0,
+    )
+    df.columns = ['Date', 'Time', 'Last']
+    df['DateTime'] = pd.to_datetime(df['Date'] + ' ' + df['Time'])
+    df = df[['DateTime', 'Last']]
     df = df.sort_values('DateTime').reset_index(drop=True)
 
     elapsed = _time.time() - t0
-    print(f"  combined: {len(df):,} rows, loaded in {elapsed:.1f}s")
+    print(f"  {role}: {len(df):,} rows, loaded in {elapsed:.1f}s")
     print(f"  range: {df['DateTime'].iloc[0]} -> {df['DateTime'].iloc[-1]}")
     return df
 
 
-def load_rays():
-    """Load ray context data (both periods), filter TF >= 60m."""
-    print("[load] Ray context data (calibration + holdout)...")
-    dfs = []
-    for role in ['calibration', 'holdout']:
-        path = DATA / f'NQ-ray-context-{role}.csv'
-        d = pd.read_csv(path)
-        print(f"  {role}: {len(d):,} rows")
-        dfs.append(d)
-    df = pd.concat(dfs, ignore_index=True)
+def load_rays_single(role, zte):
+    """Load ray context data for one period, filter TF >= 60m and SBB-origin rays."""
+    print(f"[load] Ray context data ({role})...")
+
+    path = DATA / f'NQ-ray-context-{role}.csv'
+    df = pd.read_csv(path)
     n_raw = len(df)
 
-    # Filter: TF >= 60m
+    # Filter 1: TF >= 60m
     tf_min = df['RayTF'].map(TF_MINUTES)
     tf_removed = (tf_min < 60).sum()
     df = df[tf_min >= 60].copy()
 
-    print(f"  raw: {n_raw:,}, TF<60m removed: {tf_removed:,}, "
-          f"remaining: {len(df):,}")
+    # Filter 2: Remove SBB-origin rays
+    # SBB zones: ZoneBroken=1 AND (BreakBarIndex - BarIndex) <= 1
+    # Build lookup of SBB zone edge prices by TF (same period only).
+    sbb_mask = (zte['ZoneBroken'] == 1) & ((zte['BreakBarIndex'] - zte['BarIndex']) <= 1)
+    sbb_zones = zte[sbb_mask]
+    sbb_prices = set()
+    for _, row in sbb_zones.iterrows():
+        if row['TouchType'] == 'DEMAND_EDGE':
+            sbb_prices.add((row['ZoneBot'], row['SourceLabel']))
+        else:
+            sbb_prices.add((row['ZoneTop'], row['SourceLabel']))
+
+    sbb_ray_mask = df.apply(
+        lambda r: (r['RayPrice'], r['RayTF']) in sbb_prices, axis=1
+    )
+    sbb_removed = sbb_ray_mask.sum()
+    df = df[~sbb_ray_mask].copy()
+
+    print(f"  {role}: raw={n_raw:,}, TF<60m removed={tf_removed:,}, "
+          f"SBB removed={sbb_removed:,}, remaining={len(df):,}")
+    return df
+
+
+def load_vol_bars_single(role):
+    """Load 250-vol bar data for one period (includes warmup)."""
+    print(f"[load] 250-vol bar data ({role})...")
+    path = DATA / f'NQ-250vol-{role}.csv'
+    df = pd.read_csv(path)
+    df.columns = df.columns.str.strip()
+    print(f"  {role}: {len(df):,} rows, {len(df.columns)} cols")
     return df
 
 
@@ -401,7 +436,7 @@ def find_best_ray_stop(touch, rays_for_touch):
 
 
 def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
-                   ray_stop_price):
+                   ray_stop_price, touch_bar_penetration_ticks):
     """
     Simulate one touch across all sweep combinations.
     Returns list of result dicts.
@@ -479,8 +514,35 @@ def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
                 if entry_price >= zone_top:
                     continue
 
+            # Time-to-entry: how long until the offset entry price is
+            # first reached in tick data. Zero if touch bar already
+            # penetrated past the offset level.
+            if touch_bar_penetration_ticks >= entry_offset:
+                time_to_entry_sec = 0.0
+                entry_start_idx = 0  # start tracking from first tick after touch
+            else:
+                # Find first tick at or past entry price
+                if is_demand:
+                    entry_mask = fwd_prices[:n] <= entry_price
+                else:
+                    entry_mask = fwd_prices[:n] >= entry_price
+                if entry_mask.any():
+                    entry_start_idx = int(np.argmax(entry_mask))
+                    time_to_entry_sec = fwd_delta_sec[entry_start_idx]
+                else:
+                    continue  # entry price never reached, skip this combo
+
+            # Slice prices/times from entry tick onward for MFE/MAE/stop tracking.
+            # Everything before entry_start_idx is pre-entry — doesn't count.
+            # Rebase time to be relative to ENTRY, not touch.
+            prices_from_entry = prices[entry_start_idx:]
+            delta_from_entry = delta_sec[entry_start_idx:] - time_to_entry_sec
+
+            if len(prices_from_entry) == 0:
+                continue
+
             # Excursion from entry (positive = favorable)
-            excursion = (prices - entry_price) * direction
+            excursion = (prices_from_entry - entry_price) * direction
 
             for stop_type, stop_base in stop_configs:
                 for stop_buffer in STOP_BUFFERS:
@@ -494,16 +556,16 @@ def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
                     if risk_ticks <= 0:
                         continue
 
-                    # Stop hit detection
+                    # Stop hit detection (using entry-aligned arrays)
                     if is_demand:
-                        stop_mask = prices <= stop_price
+                        stop_mask = prices_from_entry <= stop_price
                     else:
-                        stop_mask = prices >= stop_price
+                        stop_mask = prices_from_entry >= stop_price
 
                     if stop_mask.any():
                         stop_idx = np.argmax(stop_mask)
                         exit_reason = 'stop'
-                        resolution_sec = delta_sec[stop_idx]
+                        resolution_sec = delta_from_entry[stop_idx]
                         pnl_ticks = -risk_ticks
 
                         # MFE/MAE up to stop point
@@ -511,11 +573,14 @@ def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
                         mfe_ticks = max(seg.max(), 0) / TICK_SIZE
                         mae_ticks = max((-seg).max(), 0) / TICK_SIZE
                         mfe_idx_local = np.argmax(seg)
-                        time_to_mfe_sec = delta_sec[mfe_idx_local]
+                        time_to_mfe_sec = delta_from_entry[mfe_idx_local]
 
                         # Zone break velocity (10s after stop)
-                        break_end_sec = resolution_sec + 10
-                        after_mask = ((fwd_delta_sec > resolution_sec)
+                        # resolution_sec is relative to entry, but fwd_delta_sec
+                        # is relative to touch. Adjust by adding time_to_entry_sec.
+                        stop_abs_sec = resolution_sec + time_to_entry_sec
+                        break_end_sec = stop_abs_sec + 10
+                        after_mask = ((fwd_delta_sec > stop_abs_sec)
                                       & (fwd_delta_sec <= break_end_sec))
                         if after_mask.any():
                             after_prices = fwd_prices[after_mask]
@@ -532,8 +597,8 @@ def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
                         mfe_ticks = max(excursion.max(), 0) / TICK_SIZE
                         mae_ticks = max((-excursion).max(), 0) / TICK_SIZE
                         mfe_idx_local = np.argmax(excursion)
-                        time_to_mfe_sec = delta_sec[mfe_idx_local]
-                        resolution_sec = delta_sec[-1]
+                        time_to_mfe_sec = delta_from_entry[mfe_idx_local]
+                        resolution_sec = delta_from_entry[-1]
                         break_vel = np.nan
 
                     # R:R at MFE
@@ -578,7 +643,10 @@ def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
                         'ZoneWidthTicks': touch['ZoneWidthTicks'],
                         'CascadeState': touch['CascadeState'],
                         'ZoneAgeBars': touch['ZoneAgeBars'],
+                        'Period': touch.get('Period', 'unknown'),
                         'ZTE_Seq': touch['TouchSequence'],
+                        'TouchBarPenetration': touch_bar_penetration_ticks,
+                        'TimeToEntry_Sec': time_to_entry_sec,
                         'EntryOffset': entry_offset,
                         'StopBuffer': stop_buffer,
                         'TimeCapMin': time_cap,
@@ -610,9 +678,9 @@ def simulate_touch(touch, tick_prices, tick_datetimes, tick_start,
     return results
 
 
-def run_simulation(zte, ticks, rays):
-    """Run Part B simulation across all touches and sweep combos."""
-    print("\n[B] Running tick-level baseline simulation...")
+def run_simulation(zte, ticks, rays, vol_bars, role_label):
+    """Run Part B simulation for one period's data."""
+    print(f"\n[B] Running tick-level simulation ({role_label})...")
     t0 = _time.time()
 
     # Convert tick data to numpy for speed
@@ -621,6 +689,10 @@ def run_simulation(zte, ticks, rays):
 
     # Pre-group rays by TouchID
     ray_groups = rays.groupby('TouchID')
+
+    # Vol bar data for touch bar penetration (single period)
+    vol_high = vol_bars['High'].values if 'High' in vol_bars.columns else None
+    vol_low = vol_bars['Low'].values if 'Low' in vol_bars.columns else None
 
     # Track tick match rate
     matched = 0
@@ -651,6 +723,26 @@ def run_simulation(zte, ticks, rays):
             continue
         matched += 1
 
+        # Touch bar penetration: how far the 250-vol bar already pushed
+        # past the zone edge into the zone
+        bi = touch['BarIndex']
+        is_demand = touch['TouchType'] == 'DEMAND_EDGE'
+
+        bar_high = vol_high[bi] if vol_high is not None and bi < len(vol_high) else None
+        bar_low = vol_low[bi] if vol_low is not None and bi < len(vol_low) else None
+
+        if bar_high is not None and bar_low is not None:
+            if is_demand:
+                # Demand: price approaches from above, zone top is touch edge
+                # Penetration = how far Low went below the touch edge
+                touch_bar_pen = max(0, (touch['ZoneTop'] - bar_low) / TICK_SIZE)
+            else:
+                # Supply: price approaches from below, zone bot is touch edge
+                # Penetration = how far High went above the touch edge
+                touch_bar_pen = max(0, (bar_high - touch['ZoneBot']) / TICK_SIZE)
+        else:
+            touch_bar_pen = np.nan
+
         # Get rays for this touch
         tid = touch['TouchID']
         if tid in ray_groups.groups:
@@ -662,7 +754,8 @@ def run_simulation(zte, ticks, rays):
 
         # Simulate
         touch_results = simulate_touch(
-            touch, tick_prices, tick_datetimes, tick_idx, ray_stop
+            touch, tick_prices, tick_datetimes, tick_idx, ray_stop,
+            touch_bar_pen
         )
         all_results.extend(touch_results)
 
@@ -831,6 +924,10 @@ def part_c1_mfe_distribution(sim_df):
     # By session
     rows.append(summarize(df[df['Session'] == 'RTH'], 'RTH'))
     rows.append(summarize(df[df['Session'] == 'ETH'], 'ETH'))
+    # By period (stability check — no fitting, just observation)
+    if 'Period' in df.columns:
+        rows.append(summarize(df[df['Period'] == 'calibration'], 'CALIBRATION'))
+        rows.append(summarize(df[df['Period'] == 'holdout'], 'HOLDOUT'))
 
     # Print summary
     for r in rows:
@@ -863,21 +960,41 @@ def part_c1_mfe_distribution(sim_df):
           f"cap={best['TimeCapMin']:.0f}min -> "
           f"R:R={best['rr_median']:.2f}")
 
-    # Break-even R: where win_rate * R = (1 - win_rate) * 1
-    # Solve: win_rate(R) * R = (1 - win_rate(R)) * 1
-    # Approximate from discrete R values
-    for r_mult in [1.0, 1.5, 2.0, 2.5, 3.0]:
-        col = f'Win_{str(r_mult).replace(".", "_")}R'
-        if col not in df.columns:
-            continue
-        wr = df[col].mean()
+    # Break-even R: interpolate to find the R where EV crosses zero.
+    # EV(R) = win_rate(R) * R - (1 - win_rate(R)) * 1
+    # Compute EV at discrete R values, then interpolate the zero crossing.
+    r_values = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+    ev_points = []
+    for r_mult in r_values:
+        # Win rate at this R: fraction of trades where MFE >= R * risk
+        wr = (df['MFE_Ticks'] >= r_mult * df['RiskTicks']).mean()
         ev = wr * r_mult - (1 - wr) * 1.0
-        if ev >= 0:
-            print(f"  break-even check: {r_mult}R target, "
-                  f"win={wr:.1%}, EV={ev:+.2f}R [PASS]")
-            break
+        ev_points.append((r_mult, wr, ev))
 
-    return {'overall': rows, 'by_sweep': grouped}
+    # Find zero crossing via linear interpolation
+    breakeven_r = np.nan
+    for i in range(1, len(ev_points)):
+        r_prev, _, ev_prev = ev_points[i - 1]
+        r_curr, _, ev_curr = ev_points[i]
+        if ev_prev < 0 and ev_curr >= 0:
+            # Linear interpolation: r where ev = 0
+            frac = -ev_prev / (ev_curr - ev_prev)
+            breakeven_r = r_prev + frac * (r_curr - r_prev)
+            break
+    if np.isnan(breakeven_r) and ev_points[0][2] >= 0:
+        breakeven_r = ev_points[0][0]  # profitable even at lowest R
+
+    print(f"  break-even R: {breakeven_r:.2f}")
+    for r_mult, wr, ev in ev_points:
+        tag = " <-- BE" if not np.isnan(breakeven_r) and abs(r_mult - breakeven_r) < 0.3 else ""
+        print(f"    {r_mult:.1f}R: win={wr:.1%}, EV={ev:+.3f}R{tag}")
+
+    # Add breakeven_r to each overall row
+    for r in rows:
+        if r:
+            r['breakeven_r'] = breakeven_r
+
+    return {'overall': rows, 'by_sweep': grouped, 'breakeven_r': breakeven_r}
 
 
 def part_c2_risk_profile(sim_df):
@@ -1377,8 +1494,7 @@ def save_ray_analysis(a2, rays, zte):
     lines = []
     lines.append("# Zone Touch NQ — Ray Availability Analysis\n")
     lines.append(f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}\n")
-    lines.append(f"Filter: TF >= 60m only (SBB filter not applied — "
-                 f"ray origin zone not identifiable from ray context data)\n")
+    lines.append(f"Filter: TF >= 60m AND non-SBB origin\n")
     lines.append(f"\n## Summary\n")
     lines.append(f"- Valid rays after filter: {len(rays):,}")
     lines.append(f"- Touches with valid ray: {a2['touches_with_ray']}/{a2['touches_total']} "
@@ -1484,38 +1600,121 @@ def update_output_readme(sim_df):
 # MAIN
 # ═══════════════════════════════════════════════════════════════
 
-def main():
-    t_start = _time.time()
-    print("=" * 60)
-    print("Zone Touch NQ — Prompt 0: Baseline")
-    print(f"Calibration: {CAL_START.date()} to {CAL_END.date()}")
-    print(f"Holdout:     {HO_START.date()} to {HO_END.date()}")
-    print("=" * 60)
+def process_period(role):
+    """Load data, run simulation, and return results for one period.
 
-    # Ensure output directory exists
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+    Each period (calibration=Z5 contract, holdout=H6 contract) is
+    processed independently — different instruments, no cross-contamination.
+    """
+    print(f"\n{'=' * 60}")
+    print(f"Processing: {role}")
+    print(f"{'=' * 60}")
 
-    # ── Load data ──
-    zte = load_zte()
-    ticks = load_tick_data()
-    rays = load_rays()
+    zte = load_zte_single(role)
+    ticks = load_tick_data_single(role)
+    rays = load_rays_single(role, zte)
+    vol = load_vol_bars_single(role)
 
-    # ── Part A: Zone Geometry ──
+    # Part A: Zone Geometry (per period)
     a1 = part_a1_zone_width(zte)
     a2 = part_a2_ray_availability(zte, rays)
     a3 = part_a3_nested_zones(zte)
 
-    # ── Part B: Tick-Level Simulation ──
-    sim_df = run_simulation(zte, ticks, rays)
+    # Part B: Tick-Level Simulation
+    sim_df = run_simulation(zte, ticks, rays, vol, role)
+
+    return sim_df, zte, rays, a1, a2, a3
+
+
+def run_single_period(role):
+    """Run simulation for one period and save intermediate CSV.
+
+    Usage:
+        python zone-touch-NQ-prompt-0-baseline.py calibration
+        python zone-touch-NQ-prompt-0-baseline.py holdout
+    """
+    t_start = _time.time()
+    print("=" * 60)
+    print(f"Zone Touch NQ — Prompt 0: Baseline ({role})")
+    print("=" * 60)
+
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+
+    sim_df, zte, rays, a1, a2, a3 = process_period(role)
 
     if len(sim_df) == 0:
-        print("\nERROR: No simulation results. Check data coverage.")
+        print(f"\nERROR: No simulation results for {role}.")
         sys.exit(1)
 
-    # ── Post-processing ──
+    # Tag session before saving
+    sim_df = tag_session(sim_df)
+
+    # Save intermediate results
+    out_path = OUTPUT / f'zone-touch-NQ-baseline-raw-{role}.csv'
+    sim_df.to_csv(out_path, index=False)
+
+    elapsed = _time.time() - t_start
+    print(f"\n{'=' * 60}")
+    print(f"{role} done in {elapsed:.0f}s ({elapsed/60:.1f}min)")
+    print(f"Results: {len(sim_df):,} rows -> {out_path.name}")
+    print(f"{'=' * 60}")
+
+
+def run_combine():
+    """Combine per-period results and produce final summary.
+
+    Usage:
+        python zone-touch-NQ-prompt-0-baseline.py combine
+
+    Requires calibration and holdout CSVs to exist from prior runs.
+    """
+    t_start = _time.time()
+    print("=" * 60)
+    print("Zone Touch NQ — Prompt 0: Combine Results")
+    print("=" * 60)
+
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+
+    # Load per-period simulation results
+    cal_path = OUTPUT / 'zone-touch-NQ-baseline-raw-calibration.csv'
+    hld_path = OUTPUT / 'zone-touch-NQ-baseline-raw-holdout.csv'
+
+    if not cal_path.exists():
+        print(f"ERROR: {cal_path} not found. Run calibration first.")
+        sys.exit(1)
+    if not hld_path.exists():
+        print(f"ERROR: {hld_path} not found. Run holdout first.")
+        sys.exit(1)
+
+    print("[load] Per-period simulation results...")
+    sim_cal = pd.read_csv(cal_path)
+    sim_hld = pd.read_csv(hld_path)
+    sim_cal['DateTime'] = pd.to_datetime(sim_cal['DateTime'])
+    sim_hld['DateTime'] = pd.to_datetime(sim_hld['DateTime'])
+    print(f"  calibration: {len(sim_cal):,} rows")
+    print(f"  holdout:     {len(sim_hld):,} rows")
+
+    sim_df = pd.concat([sim_cal, sim_hld], ignore_index=True)
+
+    print(f"  combined:    {len(sim_df):,} rows")
+
+    # Load ZTE and rays for Part A (combined geometry)
+    zte_cal = load_zte_single('calibration')
+    zte_hld = load_zte_single('holdout')
+    rays_cal = load_rays_single('calibration', zte_cal)
+    rays_hld = load_rays_single('holdout', zte_hld)
+    zte_all = pd.concat([zte_cal, zte_hld], ignore_index=True)
+    rays_all = pd.concat([rays_cal, rays_hld], ignore_index=True)
+
+    # ── Part A: Combined zone geometry ──
+    a1 = part_a1_zone_width(zte_all)
+    a2 = part_a2_ray_availability(zte_all, rays_all)
+    a3 = part_a3_nested_zones(zte_all)
+
+    # ── Post-processing on combined results ──
     sim_df = compute_resolved_sequence(sim_df)
     sim_df = compute_concurrent_exposure(sim_df)
-    sim_df = tag_session(sim_df)
+    # Session already tagged in per-period runs
 
     # ── Part C: Summary Statistics ──
     c1 = part_c1_mfe_distribution(sim_df)
@@ -1526,19 +1725,53 @@ def main():
     c6 = part_c6_sequence_comparison(sim_df)
     c7 = part_c7_session_comparison(sim_df)
 
-    # ── Save outputs ──
-    save_raw_results(sim_df)
+    # ── Save final outputs ──
+    save_raw_results(sim_df)  # combined CSV
     save_summary_report(a1, a2, a3, c1, c2, c3, c4, c5, c6, c7)
     save_zone_geometry(a1, a2, a3)
-    save_ray_analysis(a2, rays, zte)
+    save_ray_analysis(a2, rays_all, zte_all)
     append_journal(sim_df, c1, c2, c3)
     update_output_readme(sim_df)
 
+    # Clean up per-period intermediates
+    cal_path.unlink()
+    hld_path.unlink()
+    print(f"\n[cleanup] Deleted intermediate files:")
+    print(f"  {cal_path.name}")
+    print(f"  {hld_path.name}")
+
     elapsed = _time.time() - t_start
     print(f"\n{'=' * 60}")
-    print(f"Done in {elapsed:.0f}s ({elapsed/60:.1f}min)")
-    print(f"Results: {len(sim_df):,} rows")
+    print(f"Combine done in {elapsed:.0f}s ({elapsed/60:.1f}min)")
+    print(f"Final results: {len(sim_df):,} rows")
     print(f"{'=' * 60}")
+
+
+def main():
+    """Entry point. Supports three modes:
+
+    python zone-touch-NQ-prompt-0-baseline.py calibration   # run cal only
+    python zone-touch-NQ-prompt-0-baseline.py holdout       # run hld only
+    python zone-touch-NQ-prompt-0-baseline.py combine       # combine results
+    python zone-touch-NQ-prompt-0-baseline.py               # run all sequentially
+    """
+    if len(sys.argv) > 1:
+        mode = sys.argv[1].lower()
+        if mode in ('calibration', 'cal'):
+            run_single_period('calibration')
+        elif mode in ('holdout', 'hld'):
+            run_single_period('holdout')
+        elif mode == 'combine':
+            run_combine()
+        else:
+            print(f"Unknown mode: {mode}")
+            print("Usage: python zone-touch-NQ-prompt-0-baseline.py [calibration|holdout|combine]")
+            sys.exit(1)
+    else:
+        # Run all sequentially
+        run_single_period('calibration')
+        run_single_period('holdout')
+        run_combine()
 
 
 if __name__ == '__main__':
