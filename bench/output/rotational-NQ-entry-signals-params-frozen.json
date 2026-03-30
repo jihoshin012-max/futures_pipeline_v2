@@ -1,0 +1,83 @@
+{
+  "archetype": "rotational",
+  "instrument": "NQ",
+  "variant": "entry-signals",
+  "version": "1.0",
+  "frozen_date": "2026-03-29",
+  "source": "entry-signals-study Steps 0-7 (rotational-NQ-prompt-entry-signals.md)",
+  "parent": "rotational-NQ-params-frozen.json (chop variant v1.0)",
+
+  "strategy_params": {
+    "step_dist_pts": 10.0,
+    "hard_stop_ticks": 60,
+    "initial_qty": 1,
+    "max_levels": 1,
+    "max_contract_size": 2,
+    "max_fades": 0
+  },
+
+  "choppiness_filter": {
+    "enabled": true,
+    "threshold": 0.10,
+    "lookback_bars": 3,
+    "bar_size_ticks": 250,
+    "computation": "abs(close[i] - close[i-lookback+1]) / sum(high[j] - low[j] for j in [i-lookback+1..i])",
+    "gate_behavior": "skip entry when choppiness >= threshold"
+  },
+
+  "entry_signal_filter": {
+    "enabled": true,
+    "features": {
+      "dr2": {
+        "threshold": -0.40,
+        "direction": "<=",
+        "computation": "r2[i] - r2[i-1] where r2 = linear regression R-squared on close over lookback bars",
+        "interpretation": "negative = R2 falling = trend dissolving = favorable for rotation entry"
+      },
+      "dslope": {
+        "threshold": -2.0,
+        "direction": "<=",
+        "computation": "abs(slope[i]) - abs(slope[i-1]) where slope = linear regression slope on close",
+        "interpretation": "negative = abs_slope falling = trend weakening = favorable for rotation entry"
+      }
+    },
+    "lookback_bars": 3,
+    "bar_size_ticks": 250,
+    "gate_behavior": "skip entry when dr2 > -0.40 OR dslope > -2.0 (applied after chop filter)"
+  },
+
+  "validation": {
+    "p1_baseline_chop_only": {
+      "cycles": 10312,
+      "wr": 0.82,
+      "sr": 0.18,
+      "er": 53.43,
+      "total_pnl": 550920
+    },
+    "p1_entry_filtered": {
+      "cycles": 6624,
+      "wr": 0.83,
+      "sr": 0.17,
+      "er": 63.22,
+      "total_pnl": 418785,
+      "retention": 0.64
+    },
+    "improvement": {
+      "delta_er": 9.80,
+      "delta_er_pct": 18.3,
+      "weeks_improved": 9,
+      "weeks_total": 12,
+      "weeks_degraded": 3
+    },
+    "sanity_check": "PASS - entry filter E[R]=$63.22 beats all 10 random seeds (max random=$54.91, margin=$8.31)",
+    "kill_gates_passed": ["Step 2: 4/6 features SR spread > 3pt", "Step 6: P1 improvement 18.3% > 5%"]
+  },
+
+  "feature_selection": {
+    "tested": ["signed_chop", "dchop", "d2chop", "signed_slope", "dr2", "dslope"],
+    "killed_at_step2": ["signed_chop (2.7pt SR spread)", "signed_slope (1.9pt SR spread)"],
+    "killed_at_step3_redundancy": ["dchop (r=0.87 with d2chop, weaker)", "d2chop (r=0.71 with dslope, weaker)"],
+    "survivors": ["dr2 (9.5pt SR spread, rho=0.80)", "dslope (5.9pt SR spread, rho=0.90)"],
+    "pairwise_correlation_survivors": 0.522
+  }
+}
