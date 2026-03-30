@@ -89,7 +89,8 @@ The journal carries the full narrative. Read it before starting any task.
 | `harness/evaluate_features.py` | STAGE TRIGGER | features | Python: fixed evaluator — bin spread |
 | `harness/hypothesis_generator.py` | STAGE TRIGGER | hypotheses | Python: fixed generator — calibration + replica |
 | `harness/backtest_engine.py` | STAGE TRIGGER | params | Python: fixed engine — PF |
-| ACSIL workspace (`C:\Projects\sierrachart`) | ON-DEMAND | C++ development | External agent — generates, compiles, verifies C++ studies. Writes study.cpp directly to lab/. |
+| `/build-study` | ON-DEMAND | C++ build/iterate | Gathers frozen params + config from pipeline, compiles at SC workspace, places .cpp in lab/, logs to journal + audit |
+| ACSIL workspace (`C:\Projects\sierrachart`) | ON-DEMAND | C++ development (manual) | Direct access for hands-on C++ work outside the build-study flow |
 | Replay comparison | STAGE TRIGGER | verify | Compare Python vs C++ output |
 | `/zone-data-prep` | ON-DEMAND | Pre-01 | Prepare zone touch data |
 
@@ -100,17 +101,25 @@ The journal carries the full narrative. Read it before starting any task.
 C++ work is iterative, not staged. It can happen before, during,
 or after the Python pipeline.
 
-**Process:** Open a session in the ACSIL workspace (`C:\Projects\sierrachart`).
-Tell it the archetype and instrument. It reads this scaffold's CLAUDE.md
-for naming rules and writes `lab/[arch]-[inst]-study.cpp` directly here.
-Compile → replay → compare → iterate.
+**Build via skill (primary):** Run `/build-study` with archetype +
+instrument. The skill gathers frozen params, instrument config, and
+simulation rules from the pipeline, compiles at `C:\Projects\sierrachart`,
+places the .cpp in `lab/` with correct naming, and logs to journal +
+audit. You stay in this workspace the whole time.
+
+**Manual ACSIL session (fallback):** Open a session directly in the
+ACSIL workspace (`C:\Projects\sierrachart`) for hands-on C++ work —
+prototyping, debugging, or explorative iteration outside the standard
+flow. The ACSIL agent reads this scaffold's CLAUDE.md for naming rules
+and writes `lab/[arch]-[inst]-study.cpp` directly here.
 
 **Starting from C++:** Prototype in SC until behavior looks right.
 Then translate to Python for systematic pipeline (01-02-03).
 Port refinements back to C++.
 
-**Starting from Python:** Run pipeline to frozen params. Translate
-to study.cpp. Compile and replay. Fix discrepancies until match.
+**Starting from Python:** Run pipeline to frozen params. Use
+`/build-study` to translate to study.cpp. Compile and replay.
+Fix discrepancies until match.
 
 **When both exist:** Run `workflows/verify/` before handoff to bench.
 

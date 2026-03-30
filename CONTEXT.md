@@ -33,6 +33,9 @@ rules. This file routes you to work.
 what files exist across lab/output/, bench/output/, deploy/output/
 to report current state.
 
+**Ending a session?** Check if journal or output files have
+uncommitted changes: `git status lab/output/`. Commit if needed.
+
 **Periodic health check:** Ask the agent to review for recurring
 patterns. This can be scoped to an archetype (read its journal
 and results) or scaffold-wide (read audit log, check CONTEXT.md
@@ -52,7 +55,8 @@ pattern emerges, fix the source file directly.
 | **Run holdout validation** | `bench/CONTEXT.md` | Frozen params from `lab/output/`, `_config/period-config.md` |
 | **Stress test** | `bench/CONTEXT.md` | `bench/docs/statistical-gates.md` |
 | **Get verdict** | `bench/CONTEXT.md` | Holdout tradelog + stress reports from `bench/output/` |
-| **Develop C++ study** | `lab/CONTEXT.md` | ACSIL workspace (`C:\Projects\sierrachart`) |
+| **Build/iterate C++ study** | `/build-study` skill | Frozen params from `lab/output/`, `_config/instruments.md` |
+| **Develop C++ study (manual)** | `lab/CONTEXT.md` | ACSIL workspace (`C:\Projects\sierrachart`) |
 | **Verify Python ↔ C++ match** | `lab/workflows/verify/CONTEXT.md` | Both implementations must exist |
 | **Monitor live** | `deploy/CONTEXT.md` | Verdict from `bench/output/` |
 | **Understand experiment pipeline** | `lab/workflows/CONTEXT.md` | — |
@@ -68,7 +72,7 @@ pattern emerges, fix the source file directly.
 
 | Workspace | Purpose | Skills & Tools |
 |-----------|---------|----------------|
-| `lab/` | Python + C++ experiments → frozen configs + verified builds. | Harness engines, ACSIL compiler, `/autoresearch` |
+| `lab/` | Python + C++ experiments → frozen configs + verified builds. | Harness engines, `/build-study`, `/autoresearch` |
 | `bench/` | Validation → verdicts. Holdout, stress test, assessment. | `/fractal_monitor` |
 | `deploy/` | Live monitoring. Paper trade, drift detection. | — |
 | `infra/` | Live infrastructure. Produces signals strategies consume. | SC shared memory IPC, Python ML |

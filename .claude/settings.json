@@ -5,7 +5,9 @@
       "Read(//c/Projects/**)",
       "Read(//c/SierraChart/SierraChartInstance_2/**)",
       "Read(//c//**)",
-      "Read(//e/SierraChart/ACS_Source/**)"
+      "Read(//e/SierraChart/ACS_Source/**)",
+      "Read(//c/Users/jshin/.claude/**)",
+      "Read(//e/SierraChart/SierraChartInstance_4/Data/**)"
     ],
     "additionalDirectories": [
       "C:\\Projects\\pipeline\\shared\\archetypes\\rotational\\acsil"

@@ -92,6 +92,8 @@ These rules are enforced by git pre-commit hook:
 | `drift` | Drift monitoring report |
 | `prompt` | Experiment stage contract (Layer 3 — stable spec, not per-run) |
 | `journal` | Strategy progression narrative (append-only) |
+| `scale-detection` | Signal/filter study for regime/scale detection |
+| `sweep-baseline` | Locked baseline sweep runner (do not edit) |
 
 **Statuses:** `draft` → `frozen` → `validated` → `deployed`
 
