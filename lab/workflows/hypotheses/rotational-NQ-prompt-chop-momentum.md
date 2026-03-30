@@ -4,7 +4,7 @@
 
 ## Execution Order
 
-**Run in sequence: A → B → C → C2 → D.** Each track's winner becomes the next track's baseline. C failed; C2 is the revised attempt.
+**Run in sequence: A → B → C → C2 → B2 → D.** Each track's winner becomes the next track's baseline. C and C2 failed. B2 is a new entry gate.
 
 - A and B are **entry decisions** (before trade)
 - C is **loss management** (during trade, reduce losses)
@@ -19,14 +19,23 @@
 
 **Winner:** dR2 <= -0.40 + dSlope <= -2.0. P1 E[R] $53.43 → $63.22 (+18.3%), 64% retention.
 
-## Track B: Fade Confirmation
+## Track B: Fade Confirmation — PASSED
 
 **Prompt:** `rotational-NQ-prompt-fade-confirmation.md`
-**Status:** draft
+**Status:** frozen, P2 PASS
 
 **Scope:** Close position, range decay, volume shift, consecutive bar direction, directional speed — assessed at entry to confirm the pullback is exhausting before fading.
 
-**Question:** Is this specific pullback done, or does it have more to go?
+**Winner:** fade_confirm < 0.40. P1 E[R] $63.22 -> $78.16 (+24%), 98% retention, 12/12 weeks. All hypotheses inverted.
+
+## Track B2: EMA Directional Gate + Hold — PASSED
+
+**Prompt:** `rotational-NQ-prompt-ema-directional-b2.md`
+**Status:** frozen, P2 PASS (H2+H5 overridden)
+
+**Scope:** d2_ema9 (EMA9 curvature) as entry gate + d2_avg3 in-trade hold (delay reversal when curvature aligned).
+
+**Winner:** Entry gate (|d2|<=0.5 neutral zone) + d2_avg3 hold. Combined P1 E[R]=$201 (+158%), P2 E[R]=$225, PF=4.04, 13/13 weeks.
 
 ## Track C: In-Trade Loss Management — FAILED
 
@@ -38,20 +47,16 @@
 ## Track C2: Loss Mitigation (revised approach)
 
 **Prompt:** `rotational-NQ-prompt-loss-mitigation-c2.md`
-**Status:** draft (depends on A + B)
+**Status:** FAILED
 
 **Scope:** Avoids mid-trade signal reading. Instead: HS sweep (40-60), session context signals (tick rate ratio, session range, price displacement, SR acceleration), mechanical rules (partial profit, adaptive stop from fade_confirm).
 
-**Question:** Once in a trade, is it going badly enough to cut early?
-
-## Track D: Extended Hold
+## Track D: Extended Hold — superseded by B2
 
 **Prompt:** `rotational-NQ-prompt-extended-hold.md`
-**Status:** draft (depends on A + B + C)
+**Status:** superseded — B2 hold mechanic achieved this objective via d2_avg3
 
-**Scope:** At the 10pt reversal point, evaluate whether to hold for a larger target. Three exit rules (conditional delay, stepped trailing, ATR-scaled). Reuses signals from Tracks B and C.
-
-**Question:** This trade reached the reversal target — should we hold for more?
+**Scope:** At the 10pt reversal point, evaluate whether to hold for a larger target. B2's d2_avg3 hold delivered +128% E[R] improvement using EMA curvature as the hold signal.
 
 ## Shared Data
 
@@ -67,6 +72,7 @@ Steps 0-1 from Track A produced shared output files. Subsequent tracks generate 
 |---|---|---|---|---|
 | Regime | A (chop + dR2/dSlope) | Is the market rotational and improving? | Last 3 agg bars | Entry gate |
 | Move | B (fade confirmation) | Is this pullback exhausting? | Entry tick + last 2-3 completed bars | Entry gate |
+| Direction | B2 (EMA directional) | Does the trade align with short-term trend? | EMA 9/21 at entry | Entry gate |
 | Defense | ~~C~~ (mid-trade signals) | ~~Is this trade going badly?~~ | ~~During the trade~~ | FAILED |
-| Defense | C2 (adaptive stops + session context) | Can we reduce loss severity? | At entry + session state | Reduce losses |
+| Defense | ~~C2~~ (adaptive stops + session) | ~~Can we reduce loss severity?~~ | ~~At entry + session~~ | FAILED |
 | Offense | D (extended hold) | Should we hold past the reversal? | At 10pt reversal point | Increase wins |

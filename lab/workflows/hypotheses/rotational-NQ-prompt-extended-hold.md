@@ -5,7 +5,7 @@
 > **Status:** draft
 > **Created:** 2026-03-30
 > **Parent study:** `rotational-NQ-prompt-scale-detection.md`
-> **Depends on:** Track A (PASSED), Track B (pending), Track C (pending). Update baseline with whatever survives A + B + C before executing.
+> **Depends on:** Track A (PASSED), Track B (PASSED), Track B2 (pending). C and C2 FAILED. Update baseline with whatever survives A + B + B2 before executing.
 > **Data:** `data/NQ-1tick-calibration.csv` (P1), `data/NQ-1tick-holdout.csv` (P2)
 
 ---
