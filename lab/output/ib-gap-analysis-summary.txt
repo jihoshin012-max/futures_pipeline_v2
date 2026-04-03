@@ -1,0 +1,216 @@
+IB GAP ANALYSIS -- NQ 5-Min IB Data
+Date range: 2021-09-10 to 2026-03-13
+Total valid trading days: 1143
+
+IB1 Outcomes:
+  H_ONLY  :  210 (18.4%)
+  L_ONLY  :  194 (17.0%)
+  BOTH    :  734 (64.2%)
+  NEITHER :    5 (0.4%)
+
+IB2 Outcomes:
+  H_ONLY  :  440 (38.5%)
+  L_ONLY  :  393 (34.4%)
+  BOTH    :  289 (25.3%)
+  NEITHER :   21 (1.8%)
+========================================================================
+GAP 1: EXTENSION ANALYSIS
+After IB2 breaks one side, how far does price travel beyond?
+========================================================================
+
+Total one-side IB2 days: 833
+
+--- Overall Extension Statistics (n=833) ---
+  Average extension:   115.72 pts (80.9% of IB2 range)
+  Median extension:    92.25 pts (65.0%)
+  P25:                 47.75 pts (33.5%)
+  P75:                 150.50 pts (104.7%)
+  P90:                 225.75 pts (171.8%)
+
+--- Extension Thresholds ---
+  > 100% of IB2 range: 224/833 (26.9%)
+  > 200% of IB2 range: 48/833 (5.8%)
+  > 300% of IB2 range: 11/833 (1.3%)
+
+--- Breakdown by IB1 Outcome ---
+  IB1 H_ONLY   (n=186): avg=77.0%  med=65.1%  P75=101.0%  P90=160.9%
+  IB1 L_ONLY   (n=159): avg=78.8%  med=64.9%  P75=114.2%  P90=164.8%
+  IB1 BOTH     (n=483): avg=83.5%  med=65.4%  P75=105.2%  P90=175.9%
+  IB1 NEITHER  (n=  5): avg=40.7%  med=27.0%  P75=53.0%  P90=73.4%
+
+--- Breakdown by Break Side ---
+  HIGH breaks (n=440): avg=74.6%  med=63.0%
+  LOW breaks  (n=393): avg=87.9%  med=66.7%
+========================================================================
+GAP 2: TIME TO FIRST IB2 BREAK ON ONE-SIDE DAYS
+IB1 breaks one side, IB2 breaks same direction
+========================================================================
+
+Total concordant days (IB1 one-side, IB2 same direction): 334
+
+--- Break Time Distribution (n=334) ---
+  Median break time: 10:40
+  P25 break time:    10:30
+  P75 break time:    11:25
+
+--- Distribution by Hour ---
+  10:00-10:59: 214 (64.1%)
+  11:00-11:59:  72 (21.6%)
+  12:00-12:59:  18 (5.4%)
+  13:00-13:59:   9 (2.7%)
+  14:00-14:59:   8 (2.4%)
+  15:00-15:59:   7 (2.1%)
+  16:00-16:59:   2 (0.6%)
+
+--- HIGH vs LOW Timing ---
+  IB1 HIGH only (n=181): median=10:40  P25=10:30  P75=11:15
+  IB1 LOW only  (n=153): median=10:45  P25=10:30  P75=11:30
+========================================================================
+GAP 3: IB1 BOTH DAYS --SECONDARY SIGNAL SEARCH
+========================================================================
+
+Total IB1 BOTH days: 734
+
+--- IB1 First Break Side ---
+  HIGH first:  308 (42.0%)
+  LOW first:   313 (42.6%)
+  SAME_BAR:    113 (15.4%)
+  NONE:        0 (0.0%)
+
+--- IB1 First Break -> IB2 First Break Direction ---
+  IB1 first HIGH     (n=302): IB2 first -> HIGH=104 (34.4%), LOW=198 (65.6%)
+  IB1 first LOW      (n=311): IB2 first -> HIGH=209 (67.2%), LOW=102 (32.8%)
+  IB1 first SAME_BAR (n=111): IB2 first -> HIGH=50 (45.0%), LOW=61 (55.0%)
+
+  Overall IB1->IB2 direction concordance: 206/613 (33.6%)
+
+--- IB2 Outcome on IB1 BOTH Days ---
+  IB2 BOTH    : 241 (32.8%)
+  IB2 H_ONLY  : 248 (33.8%)
+  IB2 L_ONLY  : 235 (32.0%)
+  IB2 NEITHER : 10 (1.4%)
+
+--- IB1 Range by IB2 Outcome ---
+  IB2 BOTH    : IB1 range avg=64.71  med=53.50
+  IB2 H_ONLY  : IB1 range avg=65.23  med=54.38
+  IB2 L_ONLY  : IB1 range avg=62.06  med=52.50
+  IB2 NEITHER : IB1 range avg=83.58  med=39.88
+
+--- IB2 Range by IB2 Outcome ---
+  IB2 BOTH    : IB2 range avg=132.21  med=114.75
+  IB2 H_ONLY  : IB2 range avg=155.59  med=138.12
+  IB2 L_ONLY  : IB2 range avg=153.21  med=137.25
+  IB2 NEITHER : IB2 range avg=353.00  med=180.62
+
+--- Filter Tests (target: >55% IB2 direction prediction) ---
+  IB1 first HIGH -> IB2 first same: 104/308 (33.8%)
+  IB1 first LOW -> IB2 first same: 53/313 (16.9%)
+  IB1 range > median (n=365): IB2 one-side = 241/365 (66.0%)
+  IB1 range <= median (n=369): IB2 one-side = 242/369 (65.6%)
+  IB2 range > median (n=367): IB2 one-side = 264/367 (71.9%)
+  IB2 range <= median (n=367): IB2 one-side = 219/367 (59.7%)
+  IB1 first break early (n=645): IB2 one-side = 428/645 (66.4%)
+  IB1 first break late (n=89): IB2 one-side = 55/89 (61.8%)
+  IB2/IB1 ratio > median (n=367): IB2 one-side = 259/367 (70.6%)
+  IB2/IB1 ratio <= median (n=367): IB2 one-side = 224/367 (61.0%)
+========================================================================
+GAP 4: FAILURE ANALYSIS
+IB1 one-side break, but IB2 first breaks the OTHER direction
+========================================================================
+
+IB1 one-side days with IB2 break: 393
+  Successes (IB2 same direction): 362 (92.1%)
+  Failures  (IB2 other direction): 31 (7.9%)
+
+--- Failure Characteristics vs Success ---
+  Metric                           Failures       Successes
+  ------------------------- --------------- ---------------
+  IB1 range (avg)                    105.54           92.86
+  IB1 range (med)                    101.50           71.00
+  IB2 range (avg)                    126.26          163.22
+  IB2 range (med)                    112.50          145.50
+  IB2/IB1 ratio (avg)                  1.39            2.36
+  IB2/IB1 ratio (med)                  1.08            2.04
+  IB2 break time (med)                10:55           10:40
+
+--- Extension (pts) ---
+  Failure avg extension:  67.72 pts
+  Success avg extension:  115.87 pts
+
+--- Contract/Period Clustering ---
+  M3: 4 failures
+  Z4: 4 failures
+  H4: 3 failures
+  M2: 3 failures
+  U3: 3 failures
+  Z5: 3 failures
+  H3: 2 failures
+  M4: 2 failures
+  M5: 2 failures
+  H5: 1 failures
+  By year: {2021: 1, 2022: 5, 2023: 9, 2024: 11, 2025: 5}
+
+--- Potential Pre-Trade Indicators ---
+  IB2/IB1 > 0.5: fail rate = 31/387 (8.0%)
+  IB2/IB1 > 0.8: fail rate = 26/364 (7.1%)
+  IB2/IB1 > 1.0: fail rate = 20/329 (6.1%)
+  IB2/IB1 > 1.5: fail rate = 10/262 (3.8%)
+  IB2/IB1 > 2.0: fail rate = 4/190 (2.1%)
+========================================================================
+GAP 5: IB2 UNBROKEN LEVEL DURATION
+On one-side days, does the unbroken level hold all day?
+========================================================================
+
+Total one-side IB2 days: 833
+
+NOTE: By definition, one-side days have the unbroken IB2 level holding
+all day --the ray-broken column reflects the full RTH session.
+The unbroken level holds 100% of the time on these days.
+The useful analysis is: (A) how close price gets to the unbroken level,
+and (B) on IB2 BOTH days, when does the second side break?
+
+--- Part A: Closest Approach to Unbroken Level (one-side days, n=833) ---
+  Avg closest distance:    70.15 pts (42.6% of IB2 range)
+  Median closest distance: 55.75 pts (41.2%)
+  P25 closest distance:    24.75 pts (21.1%)
+  P75 closest distance:    99.00 pts (64.3%)
+
+--- Proximity to Unbroken Level ---
+  Price comes within 25% of IB2 range: 256/833 (30.7%)
+  Price comes within 50% of IB2 range: 491/833 (58.9%)
+  Price comes within 75% of IB2 range: 722/833 (86.7%)
+  Price stays > 100% away from unbroken: 0/833 (0.0%)
+
+--- Part B: IB2 BOTH Days --Second Side Break Timing (n=289) ---
+  These are days that started as one-side but eventually broke the other.
+
+  Days with distinct first/second break: 289
+  Second break time --median: 14:00
+  Second break time --P25:    12:40
+  Second break time --P75:    15:40
+
+  Time gap between first and second break (RTH only, n=236):
+    Median gap: 160 minutes
+    Average gap: 160 minutes
+    P25 gap: 89 minutes
+    P75 gap: 220 minutes
+
+  Second break during RTH (09:30-16:00): 236 (81.7%)
+  Second break during globex (overnight): 53 (18.3%)
+
+  Second break by hour (RTH only, n=236):
+    10:00-10:59:   3 (1.3%)
+    11:00-11:59:  40 (16.9%)
+    12:00-12:59:  39 (16.5%)
+    13:00-13:59:  52 (22.0%)
+    14:00-14:59:  62 (26.3%)
+    15:00-15:59:  40 (16.9%)
+    16:00-16:59:   0 (0.0%)
+
+========================================================================
+DISCLAIMER: All percentages are observed frequencies from historical data.
+They do not predict future outcomes. Sample sizes vary by gap.
+This analysis uses 5-minute bar data; intrabar breaks may occur earlier
+than reported bar timestamps. Extension calculations use bar high/low,
+not tick-level data.
+========================================================================

@@ -179,16 +179,70 @@ IB1 BOTH remains near coin flip in holdout (56%).
 
 ---
 
+## 9. Gap Analysis (1,143 days)
+
+### Gap 1: Extension Beyond Broken IB2 Level
+On 833 one-side IB2 days:
+- Median extension: 92 pts (65% of IB2 range)
+- 27% of days extend > 100% of IB2 range
+- LOW breaks extend slightly further than HIGH (88% vs 75% of IB2 range avg)
+- IB1 outcome does not differentiate extension size
+
+### Gap 2: Time to First IB2 Break (one-side days)
+On 334 concordant days (IB1 one-side, IB2 same direction):
+- Median first break: 10:40 (10 min after IB2 closes)
+- 64% of breaks occur in the 10:00 hour
+- HIGH and LOW timing nearly identical (median 10:40 vs 10:45)
+
+### Gap 3: IB1 BOTH Days — Secondary Signal
+On IB1 BOTH days (62% of all days):
+- IB1 first-break direction is anti-predictive of IB2 (33.6% concordance)
+- No tested filter exceeded 55% directional accuracy
+- IB2/IB1 size ratio > median yields 70.6% one-side rate (vs 61.0% below)
+- Midline position at 09:30: 57-58% contrarian signal — not actionable
+- IB1 slope at 09:30: no meaningful differentiation
+- Verdict: no reliable directional signal found for BOTH days
+
+### Gap 4: Failure Analysis
+31 of 393 one-side days (7.9%) were failures (IB2 broke opposite direction):
+- Failures have: larger IB1 range (med 101.5 vs 71.0), smaller IB2 range
+  (med 112.5 vs 145.5), lower IB2/IB1 ratio (med 1.08 vs 2.04)
+- **IB2/IB1 ratio > 2.0 drops failure rate to 2.1%** — strongest pre-trade filter
+- Failures have later break times (med 10:55 vs 10:40)
+- Failures have steeper IB1 slopes (med 0.180 vs 0.048) — overlaps with
+  the ratio finding (volatile IB1 = less reliable)
+- No contract or year clustering
+
+### Gap 5: IB2 Unbroken Level Duration
+On one-side days:
+- Median closest approach to unbroken level: 56 pts (41% of IB2 range)
+- 31% of days price comes within 25% of IB2 range of the unbroken level
+- When IB2 eventually breaks both sides (289 days): second break median 14:00
+- Median gap between first and second break: 160 minutes
+- 18% of second breaks occur overnight in globex
+
+### Midline Analysis on Gaps
+Tested midline position and slope at 09:30 (leading indicator) across all gaps:
+- Failures vs successes: midline position near even (53/47 vs 61/39) — not helpful
+- IB1 slope steeper on failures (0.180 vs 0.048) but overlaps with IB2/IB1 ratio
+- IB1 BOTH days: 57-58% contrarian signal — not actionable
+- Extension distance: no meaningful difference by midline position
+- Verdict: midline does not add value to any gap finding
+
+---
+
 ## Data Files
 
 IB data per contract: data/NQ-ib-5min-[contract].csv
 IB study: lab/utility-NQ-study-ib-box.cpp
 Period config: _config/period-config.md
+Gap analysis: lab/output/ib-gap-analysis.py, ib-gap-analysis-summary.txt
 
 ---
 
 ## Open Questions
 
-- Can these signals be integrated with the rangefade rotation strategy?
-- Should IB break direction influence the rangefade's directional bias?
+- Entry/stop/target mechanics for the IB directional signal
+- IB2/IB1 ratio > 2.0 as a quality filter — needs holdout validation
 - Is there value in an IB3 period (10:30-11:30)?
+- Can the 10:40 median break time inform entry timing?
