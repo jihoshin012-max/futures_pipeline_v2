@@ -11,7 +11,7 @@ and the new data becomes holdout. One edit.
 
 | Role | Start | End |
 |------|-------|-----|
-| calibration | 2025-09-21 | 2025-12-14 |
+| calibration | 2021-10-01 | 2025-12-14 |
 | holdout | 2025-12-17 | 2026-03-13 |
 
 ## Rolling Protocol

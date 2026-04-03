@@ -61,3 +61,5 @@ Append-only. Never delete or modify entries.
 | 2026-03-30 | rotational | NQ | ema-directional-frozen | Combined config frozen: A+B + d2_entry(|d2|<=0.5) + d2_avg3_hold. Params: lab/output/rotational-NQ-ema-directional-params-frozen.json |
 | 2026-03-30 | rotational | NQ | ema-directional-verdict | P2 PASS (H2+H5 overridden). E[R]=$225.01 (+$144.47 vs A+B baseline $80.55). PF=4.04, 84% WR, 11% SR. 13/13 weeks improved. H2 override: 4,466 cycles (hold consolidates by design). H5 override: Kelly=0.64 (enlarged wins, unchanged risk). Stress: bootstrap P5=$959K, WR headroom 35%, slippage profitable through 10t, eval pass 98.6%. |
 | 2026-03-30 | rotational | NQ | DEPLOY_HANDOFF | Track B2 EMA directional: frozen params + verdict copied to deploy/output/. Checklist updated with A + B + B2. Track D superseded by B2 hold mechanic. C++ implementation pending for dR2/dSlope, fade_confirm, d2_ema9 gate, and d2_avg3 hold. |
+| 2026-04-03 16:26:01 | — | — | PERIOD_CONFIG_CHANGED | -| calibration | 2025-09-21 | 2025-12-14 |
++| calibration | 2021-10-01 | 2025-12-14 | — reason: TODO |
