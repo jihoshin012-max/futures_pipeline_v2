@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Range Fade V3 — Sub-Band Concept</title>
+<style>
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Consolas, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+  }
+  .container {
+    width: 740px;
+  }
+  h2 {
+    text-align: center;
+    color: #ccc;
+    margin-bottom: 30px;
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+  .band-chart {
+    position: relative;
+    width: 100%;
+    height: 720px;
+    border-left: 1px solid #444;
+    border-bottom: 1px solid #444;
+  }
+  .band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    display: flex;
+    align-items: center;
+  }
+  .band .line {
+    flex: 1;
+    height: 2px;
+  }
+  .band .label-left {
+    position: absolute;
+    right: calc(100% + 10px);
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .band .label-right {
+    position: absolute;
+    left: calc(100% + 10px);
+    white-space: nowrap;
+    font-size: 11px;
+    color: #999;
+  }
+  .zone {
+    position: absolute;
+    left: 0;
+    right: 0;
+  }
+  .solid  { background: #ff69b4; }
+  .dashed { background: repeating-linear-gradient(90deg, #ff0066 0, #ff0066 8px, transparent 8px, transparent 14px); height: 2px; }
+  .dotted { background: repeating-linear-gradient(90deg, #888 0, #888 3px, transparent 3px, transparent 8px); height: 1px; }
+  .sub-line { background: repeating-linear-gradient(90deg, #ffaa00 0, #ffaa00 6px, transparent 6px, transparent 12px); height: 2px; }
+
+  .legend {
+    margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+  .legend-line {
+    width: 30px;
+    height: 2px;
+  }
+  .annotation {
+    position: absolute;
+    font-size: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+  }
+  .section-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #666;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Range Fade V3 — Sub-Band Concept</h2>
+  <div class="band-chart">
+
+    <!--
+      Layout (top to bottom):
+        30   V3 Sub-Outer Top   (above outer — new outermost stop)
+       110   Outer Top          (v2 stop)
+       190   Inner Top          (v2 sell entry)
+       240   V3 Sub-Inner Top   (below inner — new sub entry)
+       350   Midline
+       460   V3 Sub-Inner Bot   (above inner — new sub entry)
+       510   Inner Bot          (v2 buy entry)
+       590   Outer Bot          (v2 stop)
+       670   V3 Sub-Outer Bot   (below outer — new outermost stop)
+    -->
+
+    <!-- Zone fills: v3 outer zones (outer to sub-outer) -->
+    <div class="zone" style="top:30px; height:80px; background:#ffaa00; opacity:0.06;"></div>
+    <div class="zone" style="top:590px; height:80px; background:#ffaa00; opacity:0.06;"></div>
+
+    <!-- Zone fills: v3 sub-inner zones (inner to sub-inner) -->
+    <div class="zone" style="top:190px; height:50px; background:#ffaa00; opacity:0.06;"></div>
+    <div class="zone" style="top:460px; height:50px; background:#ffaa00; opacity:0.06;"></div>
+
+    <!-- Zone fills: v2 existing zones -->
+    <div class="zone" style="top:110px; height:80px; background:#ff0066; opacity:0.10;"></div>
+    <div class="zone" style="top:240px; height:110px; background:#ff69b4; opacity:0.08;"></div>
+    <div class="zone" style="top:350px; height:110px; background:#ff69b4; opacity:0.08;"></div>
+    <div class="zone" style="top:510px; height:80px; background:#ff0066; opacity:0.10;"></div>
+
+    <!-- === BANDS (top to bottom) === -->
+
+    <!-- V3: Sub-Outer Top (above outer — outermost) -->
+    <div class="band" style="top:30px;">
+      <div class="line sub-line"></div>
+      <div class="label-left" style="color:#ffaa00;">Sub-Outer Top</div>
+      <div class="label-right" style="color:#ffaa00;">v3: outermost STOP (short)</div>
+    </div>
+
+    <!-- Outer Top (v2 stop) -->
+    <div class="band" style="top:110px;">
+      <div class="line dashed"></div>
+      <div class="label-left" style="color:#ff0066;">Outer Top</div>
+      <div class="label-right">STOP (short)</div>
+    </div>
+
+    <!-- Inner Top (v2 sell entry) -->
+    <div class="band" style="top:190px;">
+      <div class="line solid"></div>
+      <div class="label-left" style="color:#ff69b4;">Inner Top</div>
+      <div class="label-right">SELL entry</div>
+    </div>
+
+    <!-- V3: Sub-Inner Top (below inner top) -->
+    <div class="band" style="top:240px;">
+      <div class="line sub-line"></div>
+      <div class="label-left" style="color:#ffaa00;">Sub-Inner Top</div>
+      <div class="label-right" style="color:#ffaa00;">v3: sub entry / target</div>
+    </div>
+
+    <!-- Midline -->
+    <div class="band" style="top:350px;">
+      <div class="line dotted"></div>
+      <div class="label-left" style="color:#888;">Midline</div>
+      <div class="label-right">step-up trigger (mean)</div>
+    </div>
+
+    <!-- V3: Sub-Inner Bot (above inner bot) -->
+    <div class="band" style="top:460px;">
+      <div class="line sub-line"></div>
+      <div class="label-left" style="color:#ffaa00;">Sub-Inner Bot</div>
+      <div class="label-right" style="color:#ffaa00;">v3: sub entry / target</div>
+    </div>
+
+    <!-- Inner Bot (v2 buy entry) -->
+    <div class="band" style="top:510px;">
+      <div class="line solid"></div>
+      <div class="label-left" style="color:#ff69b4;">Inner Bot</div>
+      <div class="label-right">BUY entry</div>
+    </div>
+
+    <!-- Outer Bot (v2 stop) -->
+    <div class="band" style="top:590px;">
+      <div class="line dashed"></div>
+      <div class="label-left" style="color:#ff0066;">Outer Bot</div>
+      <div class="label-right">STOP (long)</div>
+    </div>
+
+    <!-- V3: Sub-Outer Bot (below outer — outermost) -->
+    <div class="band" style="top:670px;">
+      <div class="line sub-line"></div>
+      <div class="label-left" style="color:#ffaa00;">Sub-Outer Bot</div>
+      <div class="label-right" style="color:#ffaa00;">v3: outermost STOP (long)</div>
+    </div>
+
+    <!-- Annotations -->
+    <div class="annotation" style="top:55px; color:#ffaa00; width:300px;">
+      v3 outer zone (sub-outer to outer)
+    </div>
+    <div class="annotation" style="top:205px; color:#ffaa00; width:300px;">
+      v3 sub-inner zone (inner to sub-inner)
+    </div>
+    <div class="annotation" style="top:472px; color:#ffaa00; width:300px;">
+      v3 sub-inner zone (sub-inner to inner)
+    </div>
+    <div class="annotation" style="top:625px; color:#ffaa00; width:300px;">
+      v3 outer zone (outer to sub-outer)
+    </div>
+
+    <!-- Section labels -->
+    <div class="section-label" style="top:5px;">SHORT SIDE</div>
+    <div class="section-label" style="top:695px;">LONG SIDE</div>
+
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-line solid"></div>
+      <span>Inner Band (v2 entry)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-line dashed"></div>
+      <span>Outer Band (v2 stop)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-line dotted"></div>
+      <span>Midline (mean)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-line sub-line"></div>
+      <span style="color:#ffaa00;">V3 Sub-Bands (new outer layer)</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
