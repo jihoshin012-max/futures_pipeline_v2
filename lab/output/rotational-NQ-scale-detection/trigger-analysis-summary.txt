@@ -1,0 +1,186 @@
+TRIGGER PREDICTIVENESS ANALYSIS — PHASE 1 (daily-reset)
+================================================================================
+Data: 127567 bars
+Lookback: 50, StdDev ddof=0, RTH 09:30-15:45
+Combos tested: 5
+Triggers: 9 (8 numeric + 1 categorical)
+
+DAILY RESET CHANGES
+--------------------------------------------------------------------------------
+  Trigger #4 (consecutive_stops): resets to 0 at start of each new trading day
+  Trigger #7 (rolling_win_rate): trade history clears at start of each new day;
+    rolling win rate is NaN until 10 trades have occurred that day
+
+COMBOS AND TRADE COUNTS
+--------------------------------------------------------------------------------
+  i1.50_o2.00: 8394 trades, WR=18.8%, EV=$4.73
+  i0.75_o2.50: 7090 trades, WR=57.7%, EV=$3.47
+  i1.00_o2.00: 7027 trades, WR=37.8%, EV=$1.74
+  i0.50_o2.00: 10747 trades, WR=62.3%, EV=$4.30
+  i1.25_o2.00: 7375 trades, WR=27.8%, EV=$3.34
+
+A. CORRELATION MATRIX (trigger vs trade PnL, numeric triggers only)
+--------------------------------------------------------------------------------
+combo                      i0.50_o2.00  i0.75_o2.50  i1.00_o2.00  i1.25_o2.00  i1.50_o2.00
+trigger                                                                                   
+band_touch_rate               0.006020     0.015448     0.007492     0.012220     0.015399
+bar_range                     0.000935     0.009621     0.009230     0.016052     0.007457
+bar_speed                     0.003574     0.011154     0.006238     0.001356     0.000800
+consecutive_stops             0.001307     0.003323     0.004424     0.002071    -0.004389
+price_position_vs_midline    -0.005448    -0.014018     0.002035    -0.002315    -0.002178
+range_speed                  -0.022442    -0.013307    -0.019033    -0.000445    -0.008790
+rolling_win_rate             -0.009189    -0.023258    -0.002430    -0.004645     0.014250
+stddev_ratio                  0.007205     0.007703     0.003828     0.011689     0.017291
+
+B. CONDITIONAL EV BY TRIGGER BUCKET
+--------------------------------------------------------------------------------
+
+  Trigger: stddev_ratio
+    i1.50_o2.00: low=2798t WR=16.62% EV=$0.29 | medium=2798t WR=18.23% EV=$3.89 | high=2798t WR=21.52% EV=$10.02
+    i0.75_o2.50: low=2364t WR=56.3% EV=$2.97 | medium=2363t WR=58.32% EV=$5.83 | high=2363t WR=58.4% EV=$1.62
+    i1.00_o2.00: low=2343t WR=36.79% EV=$7.33 | medium=2342t WR=37.19% EV=$-0.08 | high=2342t WR=39.37% EV=$-2.03
+    i0.50_o2.00: low=3583t WR=61.18% EV=$3.59 | medium=3582t WR=62.51% EV=$3.68 | high=3582t WR=63.32% EV=$5.61
+    i1.25_o2.00: low=2459t WR=26.31% EV=$6.68 | medium=2458t WR=26.81% EV=$-1.48 | high=2458t WR=30.39% EV=$4.81
+
+  Trigger: bar_speed
+    i1.50_o2.00: low=2821t WR=19.74% EV=$7.48 | medium=2795t WR=19.03% EV=$3.84 | high=2777t WR=17.57% EV=$2.95
+    i0.75_o2.50: low=2389t WR=57.22% EV=$-4.40 | medium=2351t WR=58.32% EV=$10.43 | high=2349t WR=57.51% EV=$4.89
+    i1.00_o2.00: low=2357t WR=38.69% EV=$0.70 | medium=2336t WR=38.14% EV=$6.08 | high=2333t WR=36.52% EV=$-1.29
+    i0.50_o2.00: low=3623t WR=61.72% EV=$-1.05 | medium=3567t WR=63.08% EV=$10.40 | high=3556t WR=62.23% EV=$3.87
+    i1.25_o2.00: low=2476t WR=29.44% EV=$8.05 | medium=2444t WR=27.7% EV=$3.30 | high=2454t WR=26.37% EV=$-1.19
+
+  Trigger: bar_range
+    i1.50_o2.00: low=2826t WR=20.28% EV=$11.85 | medium=2788t WR=17.5% EV=$-6.43 | high=2780t WR=18.56% EV=$8.69
+    i0.75_o2.50: low=2384t WR=58.1% EV=$4.89 | medium=2350t WR=57.19% EV=$-5.63 | high=2356t WR=57.72% EV=$11.12
+    i1.00_o2.00: low=2357t WR=40.31% EV=$14.01 | medium=2338t WR=35.29% EV=$-20.36 | high=2332t WR=37.74% EV=$11.49
+    i0.50_o2.00: low=3606t WR=63.31% EV=$6.54 | medium=3561t WR=61.75% EV=$0.59 | high=3580t WR=61.93% EV=$5.72
+    i1.25_o2.00: low=2497t WR=29.32% EV=$9.61 | medium=2432t WR=26.15% EV=$-14.72 | high=2446t WR=28.0% EV=$14.90
+
+  Trigger: consecutive_stops
+    i1.50_o2.00: low=2964t WR=16.57% EV=$1.06 | medium=2736t WR=20.21% EV=$14.25 | high=2694t WR=19.78% EV=$-0.89
+    i0.75_o2.50: low=4271t WR=57.9% EV=$-2.04 | medium=1685t WR=57.51% EV=$24.61 | high=1134t WR=57.05% EV=$-7.16
+    i1.00_o2.00: low=2714t WR=35.48% EV=$-7.15 | medium=2809t WR=38.55% EV=$12.61 | high=1504t WR=40.49% EV=$-2.51
+    i0.50_o2.00: low=7212t WR=62.45% EV=$3.91 | high=3535t WR=62.09% EV=$5.08
+    i1.25_o2.00: low=3668t WR=25.41% EV=$-0.63 | medium=1954t WR=29.43% EV=$5.13 | high=1753t WR=31.15% EV=$9.66
+
+  Trigger: price_position_vs_midline
+    i1.50_o2.00: low=2798t WR=20.09% EV=$8.49 | medium=2957t WR=15.83% EV=$0.77 | high=2639t WR=20.73% EV=$5.19
+    i0.75_o2.50: low=2407t WR=58.66% EV=$10.88 | medium=2364t WR=56.01% EV=$-0.84 | high=2319t WR=58.34% EV=$0.18
+    i1.00_o2.00: low=2376t WR=37.84% EV=$0.87 | medium=2330t WR=35.45% EV=$1.10 | high=2321t WR=40.07% EV=$3.27
+    i0.50_o2.00: low=3722t WR=62.39% EV=$5.57 | medium=3888t WR=61.78% EV=$5.01 | high=3137t WR=62.96% EV=$1.89
+    i1.25_o2.00: low=2547t WR=28.86% EV=$5.65 | medium=2419t WR=24.64% EV=$-0.42 | high=2409t WR=29.97% EV=$4.67
+
+  Trigger: band_touch_rate
+    i1.50_o2.00: low=3158t WR=16.59% EV=$-0.90 | medium=2848t WR=18.89% EV=$10.76 | high=2388t WR=21.57% EV=$5.00
+    i0.75_o2.50: low=2537t WR=57.82% EV=$-1.48 | medium=2527t WR=56.43% EV=$7.26 | high=2026t WR=59.03% EV=$4.95
+    i1.00_o2.00: low=2848t WR=35.71% EV=$-2.95 | medium=2148t WR=36.96% EV=$5.43 | high=2031t WR=41.56% EV=$4.41
+    i0.50_o2.00: low=3647t WR=62.27% EV=$2.25 | medium=7100t WR=62.37% EV=$5.35
+    i1.25_o2.00: low=2667t WR=25.27% EV=$-1.81 | medium=2299t WR=27.27% EV=$7.95 | high=2409t WR=31.22% EV=$4.64
+
+  Trigger: rolling_win_rate
+    i1.50_o2.00: low=3141t WR=19.26% EV=$-0.82 | medium=2472t WR=18.65% EV=$7.56 | high=2188t WR=18.24% EV=$10.24
+    i0.75_o2.50: low=2665t WR=59.36% EV=$16.15 | medium=2964t WR=57.05% EV=$-2.84 | high=861t WR=55.63% EV=$-4.04
+    i1.00_o2.00: low=2683t WR=38.61% EV=$-1.36 | medium=1737t WR=39.32% EV=$15.20 | high=2007t WR=35.48% EV=$-4.64
+    i0.50_o2.00: low=5574t WR=62.43% EV=$5.01 | medium=2448t WR=62.3% EV=$4.21 | high=2126t WR=62.28% EV=$3.39
+    i1.25_o2.00: low=2894t WR=29.27% EV=$3.94 | medium=1966t WR=26.91% EV=$2.31 | high=1921t WR=26.86% EV=$7.03
+
+  Trigger: range_speed
+    i1.50_o2.00: low=2798t WR=17.91% EV=$1.31 | medium=2798t WR=19.98% EV=$12.58 | high=2797t WR=18.48% EV=$0.41
+    i0.75_o2.50: low=2363t WR=58.48% EV=$10.39 | medium=2363t WR=57.6% EV=$2.52 | high=2363t WR=56.96% EV=$-2.13
+    i1.00_o2.00: low=2342t WR=38.22% EV=$6.64 | medium=2342t WR=37.62% EV=$1.71 | high=2342t WR=37.53% EV=$-2.87
+    i0.50_o2.00: low=3582t WR=62.9% EV=$6.82 | medium=3582t WR=62.31% EV=$5.37 | high=3582t WR=61.81% EV=$0.95
+    i1.25_o2.00: low=2458t WR=27.71% EV=$4.54 | medium=2458t WR=27.83% EV=$3.92 | high=2458t WR=27.99% EV=$1.74
+
+  Trigger: speed_range_regime
+    i1.50_o2.00: fast_wide=1226t WR=18.84% EV=$2.72 | fast_narrow=2398t WR=19.89% EV=$5.37 | slow_wide=2293t WR=18.19% EV=$10.70 | slow_narrow=2476t WR=18.26% EV=$-0.29
+    i0.75_o2.50: fast_wide=993t WR=58.21% EV=$8.87 | fast_narrow=1484t WR=56.4% EV=$-9.30 | slow_wide=2667t WR=58.57% EV=$12.00 | slow_narrow=1945t WR=57.17% EV=$-0.78
+    i1.00_o2.00: fast_wide=1013t WR=38.7% EV=$13.04 | fast_narrow=1765t WR=38.64% EV=$-6.26 | slow_wide=2278t WR=37.58% EV=$7.72 | slow_narrow=1970t WR=36.8% EV=$-3.51
+    i0.50_o2.00: fast_wide=1533t WR=63.34% EV=$6.05 | fast_narrow=2160t WR=62.92% EV=$7.29 | slow_wide=4163t WR=61.97% EV=$7.87 | slow_narrow=2890t WR=61.9% EV=$-3.71
+    i1.25_o2.00: fast_wide=1064t WR=28.67% EV=$8.97 | fast_narrow=1992t WR=29.37% EV=$1.97 | slow_wide=2178t WR=27.32% EV=$9.34 | slow_narrow=2140t WR=26.54% EV=$-4.07
+
+C. TRIGGER PREDICTIVENESS RANKING (by avg bucket EV spread)
+--------------------------------------------------------------------------------
+  Trigger                          Avg Spread   Max Spread   Avg |corr|
+  bar_range                            $20.99       $34.37       0.0087
+  consecutive_stops                    $15.63       $31.77       0.0031
+  speed_range_regime                   $15.32       $21.30          N/A
+  rolling_win_rate                     $11.49       $20.19       0.0108
+  bar_speed                             $9.48       $14.83       0.0046
+  range_speed                           $8.57       $12.52       0.0128
+  band_touch_rate                       $8.33       $11.66       0.0113
+  stddev_ratio                          $6.70        $9.73       0.0095
+  price_position_vs_midline             $6.32       $11.72       0.0052
+
+================================================================================
+D. THRESHOLD VALUES (for holdout application)
+================================================================================
+
+Tercile boundaries (33rd / 67th percentile) per trigger per combo:
+--------------------------------------------------------------------------------
+
+  stddev_ratio:
+    i0.50_o2.00: P33=0.353552  P67=0.544042
+    i0.75_o2.50: P33=0.353227  P67=0.546815
+    i1.00_o2.00: P33=0.376378  P67=0.583432
+    i1.25_o2.00: P33=0.389049  P67=0.602773
+    i1.50_o2.00: P33=0.398965  P67=0.620629
+
+  bar_speed:
+    i0.50_o2.00: P33=10.200000  P67=17.300000
+    i0.75_o2.50: P33=10.200000  P67=17.300000
+    i1.00_o2.00: P33=9.600000  P67=16.700000
+    i1.25_o2.00: P33=9.300000  P67=16.300000
+    i1.50_o2.00: P33=9.000000  P67=15.900000
+
+  bar_range:
+    i0.50_o2.00: P33=6.550000  P67=9.000000
+    i0.75_o2.50: P33=6.525000  P67=8.950000
+    i1.00_o2.00: P33=6.450000  P67=8.825000
+    i1.25_o2.00: P33=6.425000  P67=8.700000
+    i1.50_o2.00: P33=6.375000  P67=8.600000
+
+  consecutive_stops:
+    i0.50_o2.00: P33=0.000000  P67=0.000000
+    i0.75_o2.50: P33=0.000000  P67=1.000000
+    i1.00_o2.00: P33=0.000000  P67=2.000000
+    i1.25_o2.00: P33=1.000000  P67=3.000000
+    i1.50_o2.00: P33=1.000000  P67=4.000000
+
+  price_position_vs_midline:
+    i0.50_o2.00: P33=0.250000  P67=0.750000
+    i0.75_o2.50: P33=0.250000  P67=0.700000
+    i1.00_o2.00: P33=0.250000  P67=0.700000
+    i1.25_o2.00: P33=0.250000  P67=0.700000
+    i1.50_o2.00: P33=0.233333  P67=0.750000
+
+  band_touch_rate:
+    i0.50_o2.00: P33=0.900000  P67=1.000000
+    i0.75_o2.50: P33=0.750000  P67=0.900000
+    i1.00_o2.00: P33=0.650000  P67=0.850000
+    i1.25_o2.00: P33=0.500000  P67=0.750000
+    i1.50_o2.00: P33=0.400000  P67=0.700000
+
+  rolling_win_rate:
+    i0.50_o2.00: P33=0.600000  P67=0.700000
+    i0.75_o2.50: P33=0.500000  P67=0.700000
+    i1.00_o2.00: P33=0.300000  P67=0.400000
+    i1.25_o2.00: P33=0.200000  P67=0.300000
+    i1.50_o2.00: P33=0.100000  P67=0.200000
+
+  range_speed:
+    i0.50_o2.00: P33=0.413441  P67=0.871405
+    i0.75_o2.50: P33=0.408907  P67=0.862853
+    i1.00_o2.00: P33=0.434056  P67=0.899281
+    i1.25_o2.00: P33=0.441077  P67=0.906559
+    i1.50_o2.00: P33=0.441329  P67=0.928571
+
+Speed-range regime median boundaries (rolling 200-bar):
+--------------------------------------------------------------------------------
+  (These are per-bar rolling values, not fixed thresholds.)
+  Reporting overall median of the rolling medians across all bars with valid regimes:
+  Speed median — mean: 34.76s, median: 14.60s, min: 2.30s, max: 413.95s
+  Range median — mean: 8.4150, median: 7.8500, min: 3.0000, max: 20.4750
+
+Larger EV spread = trigger state more predictive of performance shift.
+Higher |correlation| = stronger linear relationship with trade PnL.
+For speed_range_regime, spread is max - min across the 4 categorical buckets.

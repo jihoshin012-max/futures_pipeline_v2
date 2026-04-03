@@ -1,0 +1,4 @@
+vol_regime,avg_vol_ratio,avg_stddev_50,avg_bar_range,inner_touch_per100,outer_touch_per100,count,avg_bars_between_inner_touches
+contracting,0.4311,13.462,8.3917,55.4018,12.8054,92414,2.4864
+expanding,1.6245,52.6514,13.4559,81.7623,18.0328,488,289.8794
+normal,0.914,20.0701,8.6923,62.9345,11.623,34466,5.8532

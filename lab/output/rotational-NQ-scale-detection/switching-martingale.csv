@@ -1,0 +1,7 @@
+main_config,trigger,switch_rule,return_rule,sub_config,martingale,total_trades,overall_pnl,max_drawdown,pnl_dd_ratio,largest_single_loss,base_pnl,base_max_dd,daily_reset
+i1.50_o2.00,rolling_win_rate,B,R3_N5,i0.75_o2.50,m1.5_max3,7716,128384.03,47078.94,2.727,-3689.34,47487.93,15823.15,True
+i1.50_o2.00,rolling_win_rate,B,R3_N5,i0.75_o2.50,m2.0_max2,7716,144470.82,59425.21,2.431,-4374.27,47487.93,15823.15,True
+i1.50_o2.00,rolling_win_rate,A,R3_N5,i0.75_o2.50,m1.5_max3,7716,128384.03,47078.94,2.727,-3689.34,47487.93,15823.15,True
+i1.50_o2.00,rolling_win_rate,A,R3_N5,i0.75_o2.50,m2.0_max2,7716,144470.82,59425.21,2.431,-4374.27,47487.93,15823.15,True
+i1.50_o2.00,rolling_win_rate,A,R1,i0.75_o2.50,m1.5_max3,7810,142582.17,34266.33,4.161,-3548.21,47492.46,17142.2,True
+i1.50_o2.00,rolling_win_rate,A,R1,i0.75_o2.50,m2.0_max2,7810,174754.08,42279.03,4.133,-4440.9,47492.46,17142.2,True

@@ -1,0 +1,4 @@
+max_daily_loss,total_trades,total_pnl,up_days,down_days,win_day_pct,avg_up_day,avg_down_day,worst_day,best_day,max_drawdown,pnl_dd_ratio,win_rate,ev_per_trade,trades_per_day,days_halted,days_halted_pct
+0.0,2761,33085.86,37,26,58.7,2137.76,-1769.66,-6141.72,7620.6,16725.47,1.978,43.4,11.98,43.83,0,0.0
+2000.0,2296,27015.44,34,29,54.0,2129.34,-1564.9,-2651.11,7620.6,13076.16,2.066,43.3,11.77,36.44,17,27.0
+2500.0,2491,33545.32,35,28,55.6,2192.43,-1542.49,-2900.99,7620.6,14269.0,2.351,43.5,13.47,39.54,12,19.0

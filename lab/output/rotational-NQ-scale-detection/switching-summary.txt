@@ -1,0 +1,220 @@
+SWITCHING RULE ANALYSIS - PHASE 2 (daily-reset redo)
+==========================================================================================
+Data: 127567 bars, 73 trading days
+Main configs tested: ['i1.50_o2.00', 'i0.75_o2.50', 'i1.00_o2.00']
+Triggers tested: ['bar_range', 'consecutive_stops', 'speed_range_regime', 'rolling_win_rate']
+Total switching systems tested: 126
+
+CORRECTIONS FROM PREVIOUS PHASE 2:
+  - Rolling win rate: resets daily, needs 10 trades before activating each day
+  - Consecutive stops: per-side counters, reset daily
+  - When rolling_win_rate undefined (not enough trades that day), no switch triggered
+  - R2 return rule: sub WR > 50% with min 3 trades (was 5)
+  - R3 variants: R3_N3, R3_N5, R3_N10
+  - Martingale: counters reset daily AND on config switch
+
+STATIC BASELINES
+------------------------------------------------------------------------------------------
+  i1.50_o2.00: 8394 trades, EV=$4.73, PnL=$39718.19, WR=18.8%, MaxDD=$15448.04
+  i0.50_o2.00: 10747 trades, EV=$4.30, PnL=$46167.40, WR=62.3%, MaxDD=$22536.07
+  i0.75_o2.50: 7090 trades, EV=$3.47, PnL=$24621.98, WR=57.7%, MaxDD=$17935.77
+  i1.25_o2.00: 7375 trades, EV=$3.34, PnL=$24627.84, WR=27.8%, MaxDD=$21008.47
+  i1.00_o2.00: 7027 trades, EV=$1.74, PnL=$12228.14, WR=37.8%, MaxDD=$23618.39
+  Best static: i1.50_o2.00 (EV=$4.73)
+
+SWITCH-TO CONFIGS (from Phase 1 conditional EV)
+------------------------------------------------------------------------------------------
+  i1.50_o2.00 x bar_range: worst bucket='medium' (main EV=$-6.43) -> switch to i0.50_o2.00 (EV=$0.59)
+  i1.50_o2.00 x consecutive_stops: worst bucket='high' (main EV=$-0.89) -> switch to i1.25_o2.00 (EV=$9.66)
+  i1.50_o2.00 x speed_range_regime: worst bucket='slow_narrow' (main EV=$-0.29) -> switch to i0.75_o2.50 (EV=$-0.78)
+  i1.50_o2.00 x rolling_win_rate: worst bucket='low' (main EV=$-0.82) -> switch to i0.75_o2.50 (EV=$16.15)
+  i0.75_o2.50 x bar_range: worst bucket='medium' (main EV=$-5.63) -> switch to i0.50_o2.00 (EV=$0.59)
+  i0.75_o2.50 x consecutive_stops: worst bucket='high' (main EV=$-7.16) -> switch to i1.25_o2.00 (EV=$9.66)
+  i0.75_o2.50 x speed_range_regime: worst bucket='fast_narrow' (main EV=$-9.30) -> switch to i0.50_o2.00 (EV=$7.29)
+  i0.75_o2.50 x rolling_win_rate: worst bucket='high' (main EV=$-4.04) -> switch to i1.50_o2.00 (EV=$10.24)
+  i1.00_o2.00 x bar_range: worst bucket='medium' (main EV=$-20.36) -> switch to i0.50_o2.00 (EV=$0.59)
+  i1.00_o2.00 x consecutive_stops: worst bucket='low' (main EV=$-7.15) -> switch to i0.50_o2.00 (EV=$3.91)
+  i1.00_o2.00 x speed_range_regime: worst bucket='fast_narrow' (main EV=$-6.26) -> switch to i0.50_o2.00 (EV=$7.29)
+  i1.00_o2.00 x rolling_win_rate: worst bucket='high' (main EV=$-4.64) -> switch to i1.50_o2.00 (EV=$10.24)
+
+THRESHOLD VALUES
+==========================================================================================
+
+Tercile boundaries (P33 / P67) and P25 / P75 per trigger per main config:
+------------------------------------------------------------------------------------------
+
+  i1.50_o2.00:
+    bar_range:
+      P25=5.825000  P33=6.375000  P67=8.600000  P75=9.375000
+    consecutive_stops:
+      P25=1.000000  P33=1.000000  P67=4.000000  P75=6.000000
+    rolling_win_rate:
+      P25=0.100000  P33=0.100000  P67=0.200000  P75=0.300000
+
+  i0.75_o2.50:
+    bar_range:
+      P25=5.975000  P33=6.525000  P67=8.950000  P75=9.768750
+    consecutive_stops:
+      P25=0.000000  P33=0.000000  P67=1.000000  P75=1.000000
+    rolling_win_rate:
+      P25=0.500000  P33=0.500000  P67=0.700000  P75=0.700000
+
+  i1.00_o2.00:
+    bar_range:
+      P25=5.900000  P33=6.450000  P67=8.825000  P75=9.700000
+    consecutive_stops:
+      P25=0.000000  P33=0.000000  P67=2.000000  P75=2.000000
+    rolling_win_rate:
+      P25=0.300000  P33=0.300000  P67=0.400000  P75=0.500000
+
+Speed-range regime: categorical (rolling 200-bar median boundaries)
+  No fixed thresholds - per-bar rolling values.
+
+TOP 10 SWITCHING SYSTEMS (by overall EV)
+------------------------------------------------------------------------------------------
+  i1.50_o2.00 x rolling_win_rate (B/R3_N5):
+    Sub config: i0.75_o2.50
+    Trades: 7716 total (5737 main, 1979 sub = 25.6%)
+    Overall EV: $6.15 (main=$7.19, sub=$3.14)
+    PnL: $47487.93, MaxDD: $15823.15, PnL/DD: 3.001
+    WR: 28.6%
+    vs static main: +1.42, vs best static: +1.42
+
+  i1.50_o2.00 x rolling_win_rate (A/R3_N5):
+    Sub config: i0.75_o2.50
+    Trades: 7716 total (5737 main, 1979 sub = 25.6%)
+    Overall EV: $6.15 (main=$7.19, sub=$3.14)
+    PnL: $47487.93, MaxDD: $15823.15, PnL/DD: 3.001
+    WR: 28.6%
+    vs static main: +1.42, vs best static: +1.42
+
+  i1.50_o2.00 x rolling_win_rate (A/R1):
+    Sub config: i0.75_o2.50
+    Trades: 7810 total (6587 main, 1223 sub = 15.7%)
+    Overall EV: $6.08 (main=$4.96, sub=$12.12)
+    PnL: $47492.46, MaxDD: $17142.20, PnL/DD: 2.770
+    WR: 24.5%
+    vs static main: +1.35, vs best static: +1.35
+
+  i1.50_o2.00 x rolling_win_rate (B/R1):
+    Sub config: i0.75_o2.50
+    Trades: 7810 total (6587 main, 1223 sub = 15.7%)
+    Overall EV: $6.08 (main=$4.96, sub=$12.12)
+    PnL: $47492.46, MaxDD: $17142.20, PnL/DD: 2.770
+    WR: 24.5%
+    vs static main: +1.35, vs best static: +1.35
+
+  i1.50_o2.00 x consecutive_stops (A/R3_N3):
+    Sub config: i1.25_o2.00
+    Trades: 7944 total (5514 main, 2430 sub = 30.6%)
+    Overall EV: $5.87 (main=$11.32, sub=$-6.49)
+    PnL: $46641.74, MaxDD: $15743.40, PnL/DD: 2.963
+    WR: 21.8%
+    vs static main: +1.14, vs best static: +1.14
+
+  i1.50_o2.00 x consecutive_stops (B/R3_N5):
+    Sub config: i1.25_o2.00
+    Trades: 8012 total (5997 main, 2015 sub = 25.1%)
+    Overall EV: $5.79 (main=$9.20, sub=$-4.38)
+    PnL: $46368.93, MaxDD: $16110.98, PnL/DD: 2.878
+    WR: 21.1%
+    vs static main: +1.06, vs best static: +1.06
+
+  i1.00_o2.00 x rolling_win_rate (A/R3_N10):
+    Sub config: i1.50_o2.00
+    Trades: 7325 total (4655 main, 2670 sub = 36.5%)
+    Overall EV: $5.76 (main=$2.64, sub=$11.20)
+    PnL: $42173.50, MaxDD: $17025.90, PnL/DD: 2.477
+    WR: 31.1%
+    vs static main: +4.02, vs best static: +1.03
+
+  i0.75_o2.50 x consecutive_stops (A/R3_N10):
+    Sub config: i1.25_o2.00
+    Trades: 7293 total (2897 main, 4396 sub = 60.3%)
+    Overall EV: $5.54 (main=$12.27, sub=$1.11)
+    PnL: $40416.69, MaxDD: $19093.68, PnL/DD: 2.117
+    WR: 40.3%
+    vs static main: +2.07, vs best static: +0.81
+
+  i0.75_o2.50 x consecutive_stops (B/R3_N10):
+    Sub config: i1.25_o2.00
+    Trades: 7293 total (2897 main, 4396 sub = 60.3%)
+    Overall EV: $5.54 (main=$12.27, sub=$1.11)
+    PnL: $40416.69, MaxDD: $19093.68, PnL/DD: 2.117
+    WR: 40.3%
+    vs static main: +2.07, vs best static: +0.81
+
+  i1.50_o2.00 x consecutive_stops (A/R3_N10):
+    Sub config: i1.25_o2.00
+    Trades: 7654 total (3258 main, 4396 sub = 57.4%)
+    Overall EV: $5.23 (main=$14.66, sub=$-1.76)
+    PnL: $40019.13, MaxDD: $17416.48, PnL/DD: 2.298
+    WR: 24.0%
+    vs static main: +0.50, vs best static: +0.50
+
+BOTTOM 5 SWITCHING SYSTEMS (worst by overall EV)
+------------------------------------------------------------------------------------------
+  i1.00_o2.00 x speed_range_regime (C/R4): EV=$2.09, vs static main: +0.35
+  i1.00_o2.00 x consecutive_stops (B/R4): EV=$1.87, vs static main: +0.13
+  i1.00_o2.00 x consecutive_stops (A/R4): EV=$1.87, vs static main: +0.13
+  i0.75_o2.50 x consecutive_stops (B/R2): EV=$1.82, vs static main: -1.65
+  i0.75_o2.50 x consecutive_stops (A/R2): EV=$1.82, vs static main: -1.65
+
+SUMMARY BY TRIGGER (average EV lift vs static main)
+------------------------------------------------------------------------------------------
+  bar_range: avg lift=$0.59, best=$3.48, worst=$-2.10, 26/36 beat static main
+  consecutive_stops: avg lift=$0.53, best=$2.14, worst=$-1.65, 26/36 beat static main
+  speed_range_regime: avg lift=$-0.11, best=$2.38, worst=$-2.63, 10/18 beat static main
+  rolling_win_rate: avg lift=$0.92, best=$4.02, worst=$-0.39, 30/36 beat static main
+
+SUMMARY BY RETURN RULE (average EV lift vs static main)
+------------------------------------------------------------------------------------------
+  R1: avg lift=$0.86 (21 systems)
+  R2: avg lift=$0.25 (21 systems)
+  R3_N10: avg lift=$1.03 (21 systems)
+  R3_N3: avg lift=$0.49 (21 systems)
+  R3_N5: avg lift=$0.52 (21 systems)
+  R4: avg lift=$0.25 (21 systems)
+
+VERDICT
+------------------------------------------------------------------------------------------
+  92/126 switching systems beat their static main config EV
+  33/126 switching systems beat the best single static config EV ($4.73)
+
+MARTINGALE OVERLAY (top 3 switching systems, daily+config-switch reset)
+------------------------------------------------------------------------------------------
+  i1.50_o2.00 x rolling_win_rate (B/R3_N5) + m1.5_max3:
+    PnL: $128384.03 (base: $47487.93)
+    MaxDD: $47078.94 (base: $15823.15)
+    PnL/DD: 2.727
+    Largest single loss: $-3689.34
+
+  i1.50_o2.00 x rolling_win_rate (B/R3_N5) + m2.0_max2:
+    PnL: $144470.82 (base: $47487.93)
+    MaxDD: $59425.21 (base: $15823.15)
+    PnL/DD: 2.431
+    Largest single loss: $-4374.27
+
+  i1.50_o2.00 x rolling_win_rate (A/R3_N5) + m1.5_max3:
+    PnL: $128384.03 (base: $47487.93)
+    MaxDD: $47078.94 (base: $15823.15)
+    PnL/DD: 2.727
+    Largest single loss: $-3689.34
+
+  i1.50_o2.00 x rolling_win_rate (A/R3_N5) + m2.0_max2:
+    PnL: $144470.82 (base: $47487.93)
+    MaxDD: $59425.21 (base: $15823.15)
+    PnL/DD: 2.431
+    Largest single loss: $-4374.27
+
+  i1.50_o2.00 x rolling_win_rate (A/R1) + m1.5_max3:
+    PnL: $142582.17 (base: $47492.46)
+    MaxDD: $34266.33 (base: $17142.20)
+    PnL/DD: 4.161
+    Largest single loss: $-3548.21
+
+  i1.50_o2.00 x rolling_win_rate (A/R1) + m2.0_max2:
+    PnL: $174754.08 (base: $47492.46)
+    MaxDD: $42279.03 (base: $17142.20)
+    PnL/DD: 4.133
+    Largest single loss: $-4440.90

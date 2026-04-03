@@ -1,0 +1,65 @@
+BAND SLOPE / ANGLE ANALYSIS — SUMMARY
+==================================================
+Generated: 2026-04-01 23:31
+Trades: 2685
+Blocks: 134
+
+METHODOLOGY
+----------------------------------------
+mean_slope_10 = (mean100[i] - mean100[i-10]) / 10
+mean_slope_20 = (mean100[i] - mean100[i-20]) / 20
+band_width_change = band_width[i] - band_width[i-10]
+2D grid splits: abs_slope_10 median = 0.1711, band_width median = 20.5928
+Expansion flat threshold: ±0.3532
+
+BLOCK CLASS AVERAGES (slope conditions)
+----------------------------------------
+  HIGH:
+    n_blocks        = 13
+    avg_win_rate    = 61.9%
+    avg_abs_slope_10 = 0.2846
+    avg_abs_slope_20 = 0.2780
+    avg_band_width  = 30.26
+    avg_bw_change   = -0.8328
+    avg_range_10    = 10.94
+  MEDIUM:
+    n_blocks        = 84
+    avg_win_rate    = 46.7%
+    avg_abs_slope_10 = 0.2151
+    avg_abs_slope_20 = 0.2212
+    avg_band_width  = 21.94
+    avg_bw_change   = -0.9397
+    avg_range_10    = 8.25
+  LOW:
+    n_blocks        = 37
+    avg_win_rate    = 30.1%
+    avg_abs_slope_10 = 0.2452
+    avg_abs_slope_20 = 0.2519
+    avg_band_width  = 23.49
+    avg_bw_change   = -0.7653
+    avg_range_10    = 7.94
+
+2x2 GRID: FLAT/ANGLED × WIDE/NARROW
+----------------------------------------
+  ANGLED_NARROW         n= 466  WR= 42.1%  EV=$   -2.14  Total=$   -995.71
+  ANGLED_WIDE           n= 875  WR= 44.0%  EV=$   17.98  Total=$  15728.72
+  FLAT_NARROW           n= 877  WR= 43.3%  EV=$    6.13  Total=$   5375.33
+  FLAT_WIDE             n= 467  WR= 44.8%  EV=$   27.70  Total=$  12934.39
+
+EXPANSION / CONTRACTION
+----------------------------------------
+  CONTRACTING      n=1433  WR= 44.6%  EV=$   19.07  Total=$  27325.85
+  EXPANDING        n= 685  WR= 43.5%  EV=$   10.62  Total=$   7275.63
+  FLAT_BW          n= 567  WR= 41.1%  EV=$   -2.75  Total=$  -1558.75
+
+KEY QUESTION: What band conditions produce HIGH win rate blocks?
+--------------------------------------------------
+  HIGH vs LOW abs_slope_10 diff: +0.0394 (HIGH steeper)
+  HIGH vs LOW band_width diff:   +6.77 (HIGH wider)
+  HIGH vs LOW bw_change diff:    -0.0675 (HIGH contracting more)
+
+  Best quadrant:  FLAT_WIDE  WR=44.8%  EV=$27.70
+  Worst quadrant: ANGLED_NARROW  WR=42.1%  EV=$-2.14
+
+ANSWER:
+  -> A) Wide AND flat: high volatility range-bound produces highest win rates

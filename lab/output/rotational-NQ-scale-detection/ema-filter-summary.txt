@@ -1,0 +1,77 @@
+==============================================================================================================
+EMA FILTER GRID SEARCH — RANGEFADE ROTATION
+==============================================================================================================
+Config: LB=100, Inner=0.75, Outer=1.75, Circuit breaker N=2
+Data: NQ-250tick-calibration.csv (127567 bars)
+Cost: $4.0/trade, Qty=1, No martingale, No step-up
+RTH: 09:30-15:45, Entry at bar close, ddof=0
+
+EMA filter logic:
+  - Compute EMA of Close with given period
+  - Before any new entry (fresh or reversal), check:
+    innerBot + threshold*bandWidth <= EMA <= innerTop - threshold*bandWidth
+  - threshold=0.0: EMA just inside inner bands
+  - threshold=0.5: EMA at band midpoint (most restrictive)
+  - Existing positions continue to target/stop/reversal unaffected
+  - Circuit breaker N=2 still applies on top of EMA filter
+
+            Config  Trades      PnL($)   Up   Dn  WinD%     AvgUp     AvgDn      Worst      MaxDD   PnL/DD    WR%     EV/T  T/Day  Filt%
+----------------------------------------------------------------------------------------------------------------------------------------
+     EMA50_thr0.25    2218    39309.88   35   24   59.3   2003.79  -1284.27   -3745.04    9179.62    4.282   44.7    17.72  37.59   29.7
+      EMA30_thr0.1    2409    34294.34   32   28   53.3   2074.30  -1145.83   -4084.65    8437.67    4.064   44.5    14.24  40.15   35.4
+      EMA20_thr0.1    2303    30484.29   35   25   58.3   1778.11  -1269.97   -4058.20    9275.54    3.287   44.9    13.24  38.38   30.6
+      EMA20_thr0.0    2508    36211.60   36   24   60.0   1836.11  -1245.34   -4970.77   11192.80    3.235   45.0    14.44  41.80   39.0
+      EMA50_thr0.0    2893    42047.36   33   27   55.0   2551.23  -1560.85   -6563.86   14685.32    2.863   44.3    14.53  48.22   72.1
+     EMA30_thr0.25    1956    33997.68   39   20   66.1   1650.91  -1519.38   -4602.43   12595.91    2.699   44.6    17.38  33.15   21.4
+      EMA30_thr0.0    2638    34702.85   36   25   59.0   1961.23  -1436.05   -3868.79   13123.45    2.644   44.4    13.15  43.25   45.8
+     EMA20_thr0.25    1909    28910.10   36   23   61.0   1719.61  -1434.60   -4789.43   11985.03    2.412   44.7    15.14  32.36   18.4
+      EMA50_thr0.1    2704    33416.57   31   30   50.8   2293.48  -1256.04   -4476.76   14054.06    2.378   44.2    12.36  44.33   51.8
+      EMA75_thr0.1    2931    33980.45   28   32   46.7   2866.61  -1446.39   -5961.52   15339.86    2.215   43.5    11.59  48.85   94.2
+          baseline    2963    33227.92   30   30   50.0   2701.12  -1593.51   -5227.58   17680.87    1.879   43.5    11.21  49.38  100.0
+      EMA75_thr0.0    2960    33434.72   30   30   50.0   2741.85  -1627.35   -5227.58   17997.09    1.858   43.6    11.30  49.33   99.9
+     EMA100_thr0.0    2916    29774.14   30   30   50.0   2657.04  -1664.56   -4324.39   19573.24    1.521   43.3    10.21  48.60   98.5
+     EMA75_thr0.25    2546    21023.79   33   27   55.0   1913.02  -1559.48   -5091.49   18225.12    1.154   43.9     8.26  42.43   52.5
+     EMA150_thr0.0    2236    20183.71   28   32   46.7   2411.13  -1479.00   -5196.64   20340.84    0.992   43.6     9.03  37.27   79.2
+    EMA100_thr0.25    2353    17581.04   30   30   50.0   2250.18  -1664.14   -5052.30   19351.93    0.908   43.3     7.47  39.22   74.7
+     EMA100_thr0.1    2798    14874.68   30   30   50.0   2326.84  -1831.01   -5854.27   25093.53    0.593   42.8     5.32  46.63   94.4
+     EMA150_thr0.1    1987     8134.51   29   31   48.3   2023.17  -1630.23   -4955.89   15846.57    0.513   43.3     4.09  33.12   70.0
+    EMA150_thr0.25    1503     7046.91   31   30   50.8   1947.24  -1777.24   -5961.18   21483.97    0.328   44.3     4.69  24.64   49.4
+
+==============================================================================================================
+ANALYSIS
+==============================================================================================================
+Baseline (no EMA filter, N=2): 2963 trades, PnL=$33227.92, MaxDD=$17680.87, PnL/DD=1.879, WR=43.5%, EV/T=$11.21
+
+Best PnL/DD:      EMA50_thr0.25 (4.282, baseline: 1.879, delta: +2.403)
+Best total PnL:   EMA50_thr0.0 ($42047.36, delta: $+8819.44)
+Best EV/trade:    EMA50_thr0.25 ($17.72, baseline: $11.21)
+Best win rate:    EMA20_thr0.0 (45.0%, baseline: 43.5%)
+Lowest MaxDD:     EMA30_thr0.1 ($8437.67, baseline: $17680.87)
+
+Deltas vs baseline:
+       EMA50_thr0.25: PnL   +6081.96, Trades  -745, MaxDD  -8501.25, PnL/DD  +2.403, Filter allows  29.7% of bars
+        EMA30_thr0.1: PnL   +1066.42, Trades  -554, MaxDD  -9243.20, PnL/DD  +2.185, Filter allows  35.4% of bars
+        EMA20_thr0.1: PnL   -2743.63, Trades  -660, MaxDD  -8405.33, PnL/DD  +1.408, Filter allows  30.6% of bars
+        EMA20_thr0.0: PnL   +2983.68, Trades  -455, MaxDD  -6488.07, PnL/DD  +1.356, Filter allows  39.0% of bars
+        EMA50_thr0.0: PnL   +8819.44, Trades   -70, MaxDD  -2995.55, PnL/DD  +0.984, Filter allows  72.1% of bars
+       EMA30_thr0.25: PnL    +769.76, Trades -1007, MaxDD  -5084.96, PnL/DD  +0.820, Filter allows  21.4% of bars
+        EMA30_thr0.0: PnL   +1474.93, Trades  -325, MaxDD  -4557.42, PnL/DD  +0.765, Filter allows  45.8% of bars
+       EMA20_thr0.25: PnL   -4317.82, Trades -1054, MaxDD  -5695.84, PnL/DD  +0.533, Filter allows  18.4% of bars
+        EMA50_thr0.1: PnL    +188.65, Trades  -259, MaxDD  -3626.81, PnL/DD  +0.499, Filter allows  51.8% of bars
+        EMA75_thr0.1: PnL    +752.53, Trades   -32, MaxDD  -2341.01, PnL/DD  +0.336, Filter allows  94.2% of bars
+        EMA75_thr0.0: PnL    +206.80, Trades    -3, MaxDD   +316.22, PnL/DD  -0.021, Filter allows  99.9% of bars
+       EMA100_thr0.0: PnL   -3453.78, Trades   -47, MaxDD  +1892.37, PnL/DD  -0.358, Filter allows  98.5% of bars
+       EMA75_thr0.25: PnL  -12204.13, Trades  -417, MaxDD   +544.25, PnL/DD  -0.725, Filter allows  52.5% of bars
+       EMA150_thr0.0: PnL  -13044.21, Trades  -727, MaxDD  +2659.97, PnL/DD  -0.887, Filter allows  79.2% of bars
+      EMA100_thr0.25: PnL  -15646.88, Trades  -610, MaxDD  +1671.06, PnL/DD  -0.971, Filter allows  74.7% of bars
+       EMA100_thr0.1: PnL  -18353.24, Trades  -165, MaxDD  +7412.66, PnL/DD  -1.286, Filter allows  94.4% of bars
+       EMA150_thr0.1: PnL  -25093.41, Trades  -976, MaxDD  -1834.30, PnL/DD  -1.366, Filter allows  70.0% of bars
+      EMA150_thr0.25: PnL  -26181.01, Trades -1460, MaxDD  +3803.10, PnL/DD  -1.551, Filter allows  49.4% of bars
+
+Configs with trades: 18/24
+  Beating baseline on PnL:    9/18
+  Beating baseline on PnL/DD: 10/18
+  Beating baseline on EV/T:   11/18
+
+Note: 6 configs (threshold=0.5) produced 0 trades — filter too restrictive.
+

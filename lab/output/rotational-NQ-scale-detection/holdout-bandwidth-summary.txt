@@ -1,0 +1,65 @@
+========================================================================================================================
+HOLDOUT VALIDATION: BANDWIDTH FILTER CONFIGS
+========================================================================================================================
+Holdout data: NQ-250tick-holdout.csv (121595 bars)
+Date range: 12/15/2025 to 3/13/2026
+Config: LB=100, Inner=0.75, Outer=1.75, CB N=2, MDL=$2500.0
+Cost: $4.0/trade, Qty=1, No martingale, No step-up
+RTH: 09:30-15:45, Entry at bar close, ddof=0
+
+HOLDOUT RESULTS
+------------------------------------------------------------------------------------------------------------------------
+ #                  Config  Trades      PnL($)   Up   Dn  WinD%    Worst($)    MaxDD($)   PnL/DD    WR%   EV/T($)  %Allow  Avoid
+--------------------------------------------------------------------------------------------------------------------------------
+ 1    Baseline (no filter)    2491    33545.35   35   28   55.6    -2900.99    14269.00    2.351   43.5     13.47   100.0      0
+ 2             StdDev > 50    2481    29912.94   33   30   52.4    -2900.99    15035.30    1.990   43.5     12.06    98.0    215
+ 3             StdDev > 40    2515    29243.71   36   27   57.1    -2817.36    14145.82    2.067   43.5     11.63    92.9   1239
+ 4          Range/BW > 0.5    2168    31451.52   37   26   58.7    -2812.76    12104.15    2.598   43.8     14.51    94.3   1378
+ 5        Pctl tw=200 p=80    2367    20594.27   35   28   55.6    -2808.14    13856.03    1.486   43.3      8.70    79.1   3450
+ 6        Pctl tw=200 p=85    2342    16108.12   35   28   55.6    -2952.11    16012.86    1.006   42.9      6.88    82.7   2685
+ 7        Pctl tw=500 p=90    2450    24169.64   36   27   57.1    -2900.99    14915.01    1.620   43.3      9.87    92.2   1241
+
+
+CALIBRATION vs HOLDOUT COMPARISON
+------------------------------------------------------------------------------------------------------------------------
+ #                  Config   Cal PnL($)    HO PnL($)   PnL Delta  Cal PnL/DD   HO PnL/DD  Ratio Delta
+-----------------------------------------------------------------------------------------------------
+ 1    Baseline (no filter)     33042.95     33545.35     +502.40       2.129       2.351       +0.222
+ 2             StdDev > 50     35256.77     29912.94    -5343.83       2.950       1.990       -0.960
+ 3             StdDev > 40     16184.18     29243.71   +13059.53       1.150       2.067       +0.917
+ 4          Range/BW > 0.5     31728.60     31451.52     -277.08       2.674       2.598       -0.076
+ 5        Pctl tw=200 p=80     35770.35     20594.27   -15176.08       2.603       1.486       -1.117
+ 6        Pctl tw=200 p=85     22204.57     16108.12    -6096.45       1.259       1.006       -0.253
+ 7        Pctl tw=500 p=90     29014.30     24169.64    -4844.66       1.917       1.620       -0.297
+
+
+PER-CONFIG NOTES
+------------------------------------------------------------------------------------------------------------------------
+  #1 Baseline (no filter):
+    Holdout PnL retention vs calibration: 101.5%
+
+  #2 StdDev > 50:
+    Holdout PnL retention vs calibration: 84.8%
+    vs holdout baseline: PnL $-3632.41, PnL/DD -0.361
+
+  #3 StdDev > 40:
+    Holdout PnL retention vs calibration: 180.7%
+    vs holdout baseline: PnL $-4301.64, PnL/DD -0.284
+
+  #4 Range/BW > 0.5:
+    Holdout PnL retention vs calibration: 99.1%
+    vs holdout baseline: PnL $-2093.83, PnL/DD +0.247
+
+  #5 Pctl tw=200 p=80:
+    Holdout PnL retention vs calibration: 57.6%
+    vs holdout baseline: PnL $-12951.08, PnL/DD -0.865
+
+  #6 Pctl tw=200 p=85:
+    Holdout PnL retention vs calibration: 72.5%
+    vs holdout baseline: PnL $-17437.23, PnL/DD -1.345
+
+  #7 Pctl tw=500 p=90:
+    Holdout PnL retention vs calibration: 83.3%
+    vs holdout baseline: PnL $-9375.71, PnL/DD -0.731
+
+

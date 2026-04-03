@@ -1,0 +1,178 @@
+FRESH GRID SEARCH RESULTS
+======================================================================
+
+Data: c:/Projects/futures_pipeline/data/NQ-250tick-calibration.csv
+Total bars: 127567
+Configurations tested: 486
+Configs with positive PnL (>= 30 days): 394
+Runtime: 98.6s
+
+Grid:
+  Lookbacks: [20, 30, 40, 50, 75, 100]
+  Inner mults: [0.5, 0.75, 1.0, 1.25, 1.5]
+  Outer mults: [1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
+  Martingale: ['none', 'm1.5_max2', 'm2.0_max2']
+  Valid inner/outer combos: 27
+
+Ranking: Win Day % (desc) > PnL/MaxDD (desc) > MaxDD (asc)
+Filter: total PnL > 0, trading days >= 30
+
+TOP 20 CONFIGURATIONS
+----------------------------------------------------------------------
+
+#1: LB=30 Inner=1.25 Outer=1.5 Mart=m1.5_max2
+    WinDay%=70.0%  PnL=$75,964  PnL/MaxDD=6.39  MaxDD=$11,883
+    Trades=10433  Up=42 Down=18  AvgUp=$3,035 AvgDown=$-2,862
+    WorstDay=$-6,767  LargestLoss=$-475  EV/trade=$7.28  PF=1.09  Trades/day=173.9
+
+#2: LB=20 Inner=1.0 Outer=2.0 Mart=m1.5_max2
+    WinDay%=70.0%  PnL=$51,418  PnL/MaxDD=1.99  MaxDD=$25,874
+    Trades=16224  Up=42 Down=18  AvgUp=$3,841 AvgDown=$-6,107
+    WorstDay=$-23,343  LargestLoss=$-1,524  EV/trade=$3.17  PF=1.02  Trades/day=270.4
+
+#3: LB=20 Inner=0.75 Outer=1.25 Mart=m1.5_max2
+    WinDay%=66.7%  PnL=$64,274  PnL/MaxDD=4.33  MaxDD=$14,839
+    Trades=13838  Up=40 Down=20  AvgUp=$3,046 AvgDown=$-2,878
+    WorstDay=$-10,994  LargestLoss=$-682  EV/trade=$4.64  PF=1.06  Trades/day=230.6
+
+#4: LB=40 Inner=1.25 Outer=2.5 Mart=m2.0_max2
+    WinDay%=66.7%  PnL=$82,220  PnL/MaxDD=2.84  MaxDD=$28,905
+    Trades=7070  Up=40 Down=20  AvgUp=$4,947 AvgDown=$-5,783
+    WorstDay=$-14,369  LargestLoss=$-2,433  EV/trade=$11.63  PF=1.04  Trades/day=117.8
+
+#5: LB=75 Inner=0.5 Outer=3.0 Mart=none
+    WinDay%=66.7%  PnL=$42,535  PnL/MaxDD=1.85  MaxDD=$23,038
+    Trades=5802  Up=40 Down=20  AvgUp=$2,827 AvgDown=$-3,528
+    WorstDay=$-9,131  LargestLoss=$-2,136  EV/trade=$7.33  PF=1.04  Trades/day=96.7
+
+#6: LB=40 Inner=1.25 Outer=3.0 Mart=m1.5_max2
+    WinDay%=66.7%  PnL=$40,602  PnL/MaxDD=1.18  MaxDD=$34,501
+    Trades=5770  Up=40 Down=20  AvgUp=$3,821 AvgDown=$-5,612
+    WorstDay=$-12,520  LargestLoss=$-2,966  EV/trade=$7.04  PF=1.03  Trades/day=96.2
+
+#7: LB=30 Inner=1.25 Outer=1.5 Mart=none
+    WinDay%=65.0%  PnL=$41,216  PnL/MaxDD=7.02  MaxDD=$5,875
+    Trades=10433  Up=39 Down=21  AvgUp=$1,828 AvgDown=$-1,433
+    WorstDay=$-3,905  LargestLoss=$-237  EV/trade=$3.95  PF=1.08  Trades/day=173.9
+
+#8: LB=30 Inner=1.25 Outer=1.5 Mart=m2.0_max2
+    WinDay%=65.0%  PnL=$79,145  PnL/MaxDD=6.78  MaxDD=$11,677
+    Trades=10433  Up=39 Down=21  AvgUp=$3,486 AvgDown=$-2,705
+    WorstDay=$-7,285  LargestLoss=$-475  EV/trade=$7.59  PF=1.08  Trades/day=173.9
+
+#9: LB=75 Inner=1.5 Outer=2.5 Mart=none
+    WinDay%=65.0%  PnL=$56,937  PnL/MaxDD=4.83  MaxDD=$11,794
+    Trades=3896  Up=39 Down=21  AvgUp=$3,093 AvgDown=$-3,034
+    WorstDay=$-8,240  LargestLoss=$-1,229  EV/trade=$14.61  PF=1.07  Trades/day=64.9
+
+#10: LB=75 Inner=1.5 Outer=2.5 Mart=m1.5_max2
+    WinDay%=65.0%  PnL=$96,735  PnL/MaxDD=3.96  MaxDD=$24,401
+    Trades=3896  Up=39 Down=21  AvgUp=$5,224 AvgDown=$-5,095
+    WorstDay=$-12,595  LargestLoss=$-2,459  EV/trade=$24.83  PF=1.08  Trades/day=64.9
+
+#11: LB=100 Inner=1.5 Outer=2.0 Mart=m2.0_max2
+    WinDay%=65.0%  PnL=$104,550  PnL/MaxDD=3.74  MaxDD=$27,949
+    Trades=4744  Up=39 Down=21  AvgUp=$5,338 AvgDown=$-4,935
+    WorstDay=$-15,478  LargestLoss=$-1,471  EV/trade=$22.04  PF=1.08  Trades/day=79.1
+
+#12: LB=100 Inner=1.5 Outer=3.0 Mart=m1.5_max2
+    WinDay%=65.0%  PnL=$57,853  PnL/MaxDD=2.97  MaxDD=$19,492
+    Trades=2273  Up=39 Down=21  AvgUp=$4,118 AvgDown=$-4,892
+    WorstDay=$-11,523  LargestLoss=$-3,554  EV/trade=$25.45  PF=1.06  Trades/day=37.9
+
+#13: LB=20 Inner=1.25 Outer=1.75 Mart=m1.5_max2
+    WinDay%=65.0%  PnL=$79,376  PnL/MaxDD=2.82  MaxDD=$28,197
+    Trades=16588  Up=39 Down=21  AvgUp=$4,309 AvgDown=$-4,222
+    WorstDay=$-15,332  LargestLoss=$-803  EV/trade=$4.79  PF=1.04  Trades/day=276.5
+
+#14: LB=100 Inner=1.5 Outer=2.0 Mart=m1.5_max2
+    WinDay%=65.0%  PnL=$89,328  PnL/MaxDD=2.72  MaxDD=$32,791
+    Trades=4744  Up=39 Down=21  AvgUp=$5,036 AvgDown=$-5,099
+    WorstDay=$-17,346  LargestLoss=$-1,471  EV/trade=$18.83  PF=1.07  Trades/day=79.1
+
+#15: LB=100 Inner=1.5 Outer=3.0 Mart=m2.0_max2
+    WinDay%=65.0%  PnL=$66,687  PnL/MaxDD=2.50  MaxDD=$26,692
+    Trades=2273  Up=39 Down=21  AvgUp=$4,860 AvgDown=$-5,849
+    WorstDay=$-14,460  LargestLoss=$-3,554  EV/trade=$29.34  PF=1.06  Trades/day=37.9
+
+#16: LB=75 Inner=0.5 Outer=2.0 Mart=m1.5_max2
+    WinDay%=65.0%  PnL=$55,451  PnL/MaxDD=2.38  MaxDD=$23,344
+    Trades=7317  Up=39 Down=21  AvgUp=$3,478 AvgDown=$-3,818
+    WorstDay=$-13,916  LargestLoss=$-2,898  EV/trade=$7.58  PF=1.04  Trades/day=122.0
+
+#17: LB=30 Inner=1.5 Outer=2.0 Mart=m2.0_max2
+    WinDay%=65.0%  PnL=$39,041  PnL/MaxDD=1.04  MaxDD=$37,671
+    Trades=12678  Up=39 Down=21  AvgUp=$3,964 AvgDown=$-5,502
+    WorstDay=$-11,677  LargestLoss=$-896  EV/trade=$3.08  PF=1.02  Trades/day=211.3
+
+#18: LB=30 Inner=1.0 Outer=2.0 Mart=m1.5_max2
+    WinDay%=65.0%  PnL=$30,244  PnL/MaxDD=0.98  MaxDD=$30,851
+    Trades=11390  Up=39 Down=21  AvgUp=$3,486 AvgDown=$-5,033
+    WorstDay=$-12,334  LargestLoss=$-1,793  EV/trade=$2.66  PF=1.02  Trades/day=189.8
+
+#19: LB=20 Inner=1.5 Outer=1.75 Mart=m1.5_max2
+    WinDay%=63.3%  PnL=$123,296  PnL/MaxDD=10.28  MaxDD=$11,993
+    Trades=13252  Up=38 Down=22  AvgUp=$4,701 AvgDown=$-2,516
+    WorstDay=$-8,627  LargestLoss=$-431  EV/trade=$9.30  PF=1.12  Trades/day=220.9
+
+#20: LB=20 Inner=1.0 Outer=1.25 Mart=m1.5_max2
+    WinDay%=63.3%  PnL=$67,411  PnL/MaxDD=9.41  MaxDD=$7,166
+    Trades=9990  Up=38 Down=22  AvgUp=$2,615 AvgDown=$-1,453
+    WorstDay=$-4,732  LargestLoss=$-341  EV/trade=$6.75  PF=1.11  Trades/day=166.5
+
+
+PATTERN ANALYSIS
+======================================================================
+
+By Lookback (avg of positive-PnL configs):
+     LB  Count  AvgWinDay%      AvgPnL   AvgPnL/DD    AvgMaxDD
+     20     56        58.2      41,231        2.68      24,474
+     30     57        55.6      23,292        1.29      25,477
+     40     52        57.7      40,427        1.92      25,728
+     50     75        54.9      40,077        1.81      25,649
+     75     73        57.1      38,294        1.72      25,030
+    100     81        57.2      40,168        2.05      24,257
+
+By Inner Mult (avg of positive-PnL configs):
+  Inner  Count  AvgWinDay%      AvgPnL   AvgPnL/DD    AvgMaxDD
+   0.50     73        57.3      30,338        1.38      26,056
+   0.75     74        56.1      27,159        1.36      24,991
+   1.00     97        54.9      33,137        1.85      24,063
+   1.25     82        57.8      48,837        2.31      24,766
+   1.50     68        58.0      49,270        2.66      25,880
+
+By Outer Mult (avg of positive-PnL configs):
+  Outer  Count  AvgWinDay%      AvgPnL   AvgPnL/DD    AvgMaxDD
+   1.25     37        56.9      34,438        2.87      15,224
+   1.50     60        55.9      36,605        2.06      23,183
+   1.75     84        56.0      43,873        2.35      24,042
+   2.00     77        58.2      45,650        1.98      25,655
+   2.50     67        56.1      32,686        1.40      27,223
+   3.00     69        57.2      28,011        1.12      30,479
+
+By Martingale (avg of positive-PnL configs):
+        Mart  Count  AvgWinDay%      AvgPnL   AvgPnL/DD    AvgMaxDD
+        none    125        56.5      28,329        2.10      17,208
+   m1.5_max2    130        57.1      39,375        1.86      26,788
+   m2.0_max2    139        56.6      44,127        1.78      30,523
+
+Inner × Outer Combo Count (positive-PnL configs):
+           1.25    1.50    1.75    2.00    2.50    3.00
+   0.50      10      14      13      13      11      12
+   0.75       9      13      17      12      11      12
+   1.00      18      15      18      17      16      13
+   1.25       —      18      18      17      14      15
+   1.50       —       —      18      18      15      17
+
+Top 10 Lookback × Inner × Outer combos (by avg win day %):
+   LB    In   Out   N  AvgWinDay%      AvgPnL   AvgPnL/DD
+   30  1.25  1.50   3        66.7      65,442        6.73
+   20  0.75  1.25   3        64.4      59,383        4.61
+  100  1.50  2.00   3        64.4      85,144        3.63
+  100  1.50  3.00   3        64.4      59,178        3.43
+   75  1.50  2.50   3        63.9      90,357        4.81
+   75  0.50  3.00   3        63.9      28,864        0.98
+   40  1.25  3.00   3        63.3      53,177        1.74
+   20  1.00  1.25   3        63.3      61,205        8.83
+   20  1.00  3.00   1        63.3      18,780        0.37
+   20  1.50  1.75   3        62.8      99,979        9.37

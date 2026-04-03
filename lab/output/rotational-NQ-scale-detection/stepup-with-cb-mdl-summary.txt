@@ -1,0 +1,75 @@
+====================================================================================================
+STEP-UP STOP OFFSET GRID (with N=2 circuit breaker + $2,500 max daily loss)
+====================================================================================================
+Config: LB=100, Inner=0.75, Outer=1.75, Qty=1 (no martingale)
+Circuit breaker: N=2 (per-side, daily reset, forced opposite resets both)
+Max daily loss: $2500 (track daily PnL incl costs, halt when <= -$2500, reset daily)
+Data: NQ-250tick-calibration.csv (127567 bars)
+Cost: $4.0/trade
+NQ tick size: 0.25, tick value: $5.0
+RTH: 09:30-15:45, Entry at bar close, ddof=0
+Runtime: 6.7s
+
+Step-up logic:
+  After entry, if price reaches rolling mean (dynamic midline):
+    Long: bar high >= mean -> step-up armed
+    Short: bar low <= mean -> step-up armed
+  Once armed, stop moves to entry +/- offset_ticks * tick_size
+  Step-up stop checked real-time (bar high/low), exit at bar close
+  Original outer stop still active before midline reached
+  Step-up fires once per trade
+  Step-up exit counts toward consec stop counter if PnL < 0
+
+RESULTS
+----------------------------------------------------------------------------------------------------
+  Offset  Trades     Net PnL   WinDay%     AvgUp   AvgDown     Worst     MaxDD   PnL/DD   WinR%    EV/Tr  MDLdays
+                         ($)                 ($)       ($)       ($)       ($)                       ($)         
+----------------------------------------------------------------------------------------------------
+baseline    2685      33,043     48.3%     2,746    -1,503    -2,687    15,518     2.13   43.6%    12.31       12
+     -40    2790      31,201     55.0%     2,176    -1,504    -3,312    15,798     1.97   41.9%    11.18       10
+     -20    2825      22,535     45.0%     2,490    -1,354    -3,158    16,891     1.33   40.0%     7.98       11
+     -10    2973      11,634     41.7%     2,384    -1,370    -2,961    18,554     0.63   41.1%     3.91       12
+       0    3253      14,069     46.7%     2,192    -1,478    -2,837    18,889     0.74   46.9%     4.32       12
+      10    3506      12,110     51.7%     1,985    -1,704    -3,284    24,332     0.50   51.8%     3.45       12
+      20    3614      11,774     46.7%     2,134    -1,500    -2,855    20,010     0.59   53.5%     3.26       12
+      40    3758      20,129     53.3%     1,985    -1,550    -2,854    17,828     1.13   54.5%     5.36       10
+
+STEP-UP ACTIVITY
+----------------------------------------------------------------------------------------------------
+  Offset   Fired   Fired%  StopHit
+----------------------------------------------------------------------------------------------------
+baseline       0     0.0%        0
+     -40    1578    56.6%      372
+     -20    1604    56.8%      559
+     -10    1703    57.3%      740
+       0    1916    58.9%     1153
+      10    2087    59.5%     1461
+      20    2151    59.5%     1665
+      40    2250    59.9%     1938
+
+ANALYSIS
+----------------------------------------------------------------------------------------------------
+Best Win Day %: offset=-40 (55.0%)
+Best PnL/MaxDD: offset=none (2.13)
+Best Net PnL:   offset=none ($33,043)
+Best EV/trade:  offset=none ($12.31)
+Lowest MaxDD:   offset=none ($15,518)
+Best worst day: offset=none ($-2,687)
+
+Best for daily consistency (Win Day % > PnL/MaxDD):
+  #1: offset=-40 -- WinDay%=55.0%, PnL/MaxDD=1.97, Net PnL=$31,201
+  #2: offset=40 -- WinDay%=53.3%, PnL/MaxDD=1.13, Net PnL=$20,129
+  #3: offset=10 -- WinDay%=51.7%, PnL/MaxDD=0.50, Net PnL=$12,110
+
+DELTA VS BASELINE (no step-up, with CB N=2 + MDL $2,500)
+----------------------------------------------------------------------------------------------------
+  Offset        dPnL   dWinDay%    dMaxDD   dPnL/DD    dEV/Tr    dWorst
+----------------------------------------------------------------------------------------------------
+     -40      -1,842      +6.7%      +281     -0.15     -1.13      -625
+     -20     -10,507      -3.3%    +1,373     -0.80     -4.33      -471
+     -10     -21,409      -6.7%    +3,036     -1.50     -8.40      -273
+       0     -18,974      -1.7%    +3,371     -1.38     -7.99      -150
+      10     -20,933      +3.3%    +8,814     -1.63     -8.86      -596
+      20     -21,268      -1.7%    +4,492     -1.54     -9.05      -167
+      40     -12,914      +5.0%    +2,310     -1.00     -6.95      -167
+

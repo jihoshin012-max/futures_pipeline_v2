@@ -1,0 +1,106 @@
+SPEED ANALYSIS — NQ 250-Tick Bars
+============================================================
+
+Data: NQ-250tick-calibration.csv
+Total bars: 127567
+Bars with valid duration (<=3600s gap): 127505
+Trading days: 73
+Date range: 2025-09-21 18:01:09.294000 to 2025-12-14 23:56:43.227000
+
+1. BAR DURATION DISTRIBUTION
+----------------------------------------
+     count: 127505.00
+      mean: 38.57
+    median: 13.77
+       p10: 4.00
+       p25: 7.28
+       p75: 29.14
+       p90: 101.94
+       std: 74.74
+       min: 0.00
+       max: 1739.66
+
+  Speed Bucket Breakdown:
+  Bucket          Count       %   AvgRange   AvgAbsCO   AvgDur   MedDur
+  fast            47025   36.9%       8.44       4.51      5.7      5.9
+  moderate        49452   38.8%       7.88       4.25     17.2     16.0
+  slow            20027   15.7%       8.99       4.85     57.2     47.8
+  very_slow       11001    8.6%      10.44       5.57    241.0    203.4
+
+2. SPEED x RANGE CROSS-TABULATION
+----------------------------------------
+  Counts:
+    range_quintile  Q1_narrow     Q2    Q3    Q4  Q5_wide
+    speed_bucket                                         
+    fast                 9546  10200  8984  9321     8974
+    moderate            11826  11550  9612  8980     7484
+    slow                 4490   3706  3107  3634     5090
+    very_slow             692   1478  2005  3018     3808
+
+  Percentages of total:
+    range_quintile  Q1_narrow     Q2     Q3     Q4  Q5_wide
+    speed_bucket                                           
+    fast                7.487  8.000  7.046  7.310    7.038
+    moderate            9.275  9.058  7.539  7.043    5.870
+    slow                3.521  2.907  2.437  2.850    3.992
+    very_slow           0.543  1.159  1.572  2.367    2.987
+
+  Range quintile boundaries: 0.50, 5.00, 6.75, 8.50, 11.25, 137.75
+
+3. SPEED REGIME AND BAND BEHAVIOR
+----------------------------------------
+  Band definition: inner = mean +/- 1*stdDev, outer = mean +/- 2*stdDev
+  Using rolling 50-bar window for mean and stdDev of Last price.
+
+  Bucket          Count  AvgStdDev  InnerTouch%  OuterTouch%
+  fast            47025      16.73        77.4%        27.6%
+  moderate        49452      13.51        70.7%        15.8%
+  slow            20011      15.96        69.4%        17.3%
+  very_slow       10968      17.21        68.4%        16.8%
+
+  Correlation(roll10_bar_duration, roll50_stdDev): 0.0321
+
+4. SPEED TRANSITIONS (slow->fast)
+----------------------------------------
+  StdDev expansion defined as: roll50_std increases >20% within 20 bars.
+
+  Strict (>30s -> <15s, consecutive):
+    Transitions detected: 1
+    StdDev expansion within 20 bars: 1/1 (100.0%)
+    Avg lag to inner band touch: 0.0 bars (median 0.0)
+    Transitions with touch within 50 bars: 1/1
+
+  Relaxed (>30s in last 5 -> <20s, deduped):
+    Transitions detected: 125
+    StdDev expansion within 20 bars: 58/125 (46.4%)
+    Avg lag to inner band touch: 0.4 bars (median 0.0)
+    Transitions with touch within 50 bars: 125/125
+
+5. INTRADAY SPEED PROFILE (by hour, ET)
+----------------------------------------
+  Trading days in sample: 73
+
+  Hour     Bars  Bars/Day   AvgDur   MedDur   AvgRange
+     0      930      12.7    228.1    177.8      12.58
+     1      935      12.8    229.7    200.4      12.13
+     2     1180      16.2    182.9    157.0      11.91
+     3     1721      23.6    123.9    110.3      12.36
+     4     1597      21.9    132.1    114.3      11.91
+     5     1349      18.5    158.6    141.3      11.68
+     6     1438      19.7    148.2    129.4      11.59
+     7     2125      29.1    100.4     82.0      11.58
+     8     3178      43.5     67.9     52.4       9.58
+     9    18280     250.4     11.9      6.7       8.31
+    10    20537     281.3     10.5      9.1       8.11
+    11    16493     225.9     13.1     11.2       8.09
+    12    12410     170.0     17.4     14.6       7.93
+    13    10903     149.4     19.2     16.2       7.72
+    14    10094     138.3     20.7     18.1       7.83
+    15    13396     183.5     15.6     12.9       6.55
+    16     4000      54.8     51.3     27.3       8.22
+    18     1306      17.9    158.1    116.8      14.04
+    19     1238      17.0    181.7    136.5      12.11
+    20     1459      20.0    149.0    122.5      11.49
+    21     1119      15.3    193.7    170.6      10.95
+    22      961      13.2    222.1    190.5      11.13
+    23      856      11.7    253.2    204.7      11.49

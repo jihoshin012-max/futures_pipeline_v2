@@ -1,0 +1,55 @@
+========================================================================================================================
+MARTINGALE + MAX DAILY LOSS TEST -- RANGEFADE ROTATION (N=2 CIRCUIT BREAKER)
+========================================================================================================================
+Config: LB=100, Inner=0.75, Outer=1.75, N=2
+Data: NQ-250tick-calibration.csv (127567 bars)
+Cost: $4.0/trade * qty, RTH: 09:30-15:45, ddof=0
+
+Martingale logic:
+  - Base qty = 1
+  - Next trade qty = floor(1 * mult^consecutiveStops), capped at max
+  - Per-side counters (same as circuit breaker)
+  - Win resets counter to 0, loss increments
+  - Daily reset, forced-opposite resets both counters
+  - With N=2, counter can only be 0 or 1 when entering
+
+Max daily loss logic:
+  - Track cumulative PnL for current day (including costs)
+  - When daily PnL <= -maxDailyLoss, flatten position and stop for day
+  - Resets at start of each new trading day
+  - $0 = disabled
+
+              Config  Trades      PnL($)   Up   Dn  WinD%      AvgUp      AvgDn      Worst      MaxDD   PnL/DD    WR%     EV/T    MaxLoss  Halts   Hlt%
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+     no-mart_mdl2500    2685    33042.73   29   31   48.3    2746.26   -1503.18   -2687.34   15517.87    2.129   43.6    12.31   -1468.46     12   20.0
+   m2.0-max2_mdl2500    2360    27252.88   29   31   48.3    3177.80   -2093.65   -3215.41   18778.20    1.451   43.4    11.55   -2435.78     19   31.7
+   m2.0-max3_mdl2500    2360    27252.88   29   31   48.3    3177.80   -2093.65   -3215.41   18778.20    1.451   43.4    11.55   -2435.78     19   31.7
+     m2.0-max2_nomdl    2963    37461.08   33   27   55.0    3253.91   -2589.55   -6894.48   21324.28    1.757   43.5    12.64   -2936.91      0    0.0
+       no-mart_nomdl    2963    33227.92   30   30   50.0    2701.12   -1593.51   -5227.58   17680.87    1.879   43.5    11.21   -1468.46      0    0.0
+
+========================================================================================================================
+COMPARISONS
+========================================================================================================================
+Pure baseline (no martingale, no max loss): 2963 trades, PnL=$33227.92, MaxDD=$17680.87, PnL/DD=1.879, Worst=$-5227.58
+
+Deltas vs pure baseline (no-mart_nomdl):
+       no-mart_mdl2500: PnL    -185.19, MaxDD  -2163.00, PnL/DD  +0.250, Worst  +2540.24, MaxSingleLoss -1468.46, Halts  12 (20.0%)
+     m2.0-max2_mdl2500: PnL   -5975.04, MaxDD  +1097.33, PnL/DD  -0.428, Worst  +2012.17, MaxSingleLoss -2435.78, Halts  19 (31.7%)
+     m2.0-max3_mdl2500: PnL   -5975.04, MaxDD  +1097.33, PnL/DD  -0.428, Worst  +2012.17, MaxSingleLoss -2435.78, Halts  19 (31.7%)
+       m2.0-max2_nomdl: PnL   +4233.16, MaxDD  +3643.41, PnL/DD  -0.122, Worst  -1666.90, MaxSingleLoss -2936.91, Halts   0 (0.0%)
+
+Effect of adding martingale WITH $2,500 max daily loss (vs no-mart_mdl2500):
+     m2.0-max2_mdl2500: PnL   -5789.85, MaxDD  +3260.33, PnL/DD  -0.678, Worst -3215.41, MaxSingleLoss -2435.78, Halts  19 (31.7%)
+     m2.0-max3_mdl2500: PnL   -5789.85, MaxDD  +3260.33, PnL/DD  -0.678, Worst -3215.41, MaxSingleLoss -2435.78, Halts  19 (31.7%)
+
+Effect of adding $2,500 max daily loss TO martingale (m2.0-max2):
+  PnL delta:        -10208.20
+  MaxDD delta:      -2546.08
+  PnL/DD delta:     -0.306
+  Worst day delta:  +3679.07
+  Halts:           19 (31.7%)
+
+NOTE: With N=2 circuit breaker, per-side counter can only be 0 or 1 when entering.
+  mult=2.0: floor(1 * 2.0^0)=1, floor(1 * 2.0^1)=2 -> qty=2 after 1 consecutive stop
+  max=2 vs max=3: identical because max possible qty is 2 (consec can only be 0 or 1)
+

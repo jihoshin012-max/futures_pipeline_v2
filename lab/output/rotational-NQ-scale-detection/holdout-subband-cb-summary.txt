@@ -1,0 +1,135 @@
+====================================================================================================
+HOLDOUT VALIDATION: SUB-BAND WITH CIRCUIT BREAKER
+====================================================================================================
+Holdout data: NQ-250tick-holdout.csv (121595 bars)
+Holdout period: 12/15/2025 - 3/13/2026
+Config: LB=100, Inner=0.75, Outer=1.75, Main CB N=2, MDL=$2500.0
+EMA period=50, EMA threshold=0.1
+Cost: $4.0/trade, Qty=1
+RTH: 09:30:00-15:45:00, Entry at bar close, ddof=0
+Sub-band trigger: 2 main-band consecutive stops on one side AND EMA within 0.1 of inner band on failing side
+Directional sub-band only (opposite of failures)
+Counter reset on switch-back to main
+
+----------------------------------------------------------------------------------------------------
+Baseline: No sub-bands
+----------------------------------------------------------------------------------------------------
+
+  Metric                           Calibration         Holdout
+  ----------------------------  --------------  --------------
+  Total PnL ($)                         $33043      $33,545.32
+  PnL/MaxDD                               2.13           2.351
+
+  Holdout details:
+    Total trades:          2491
+    Main trades:           2491
+    Sub-band trades:       0
+    Up days:               35
+    Down days:             28
+    Win day %:             55.6%
+    Avg up day:            $2,192.43
+    Avg down day:          $-1,542.49
+    Worst single day:      $-2,900.99
+    Max drawdown:          $14,269.00
+    Net PnL/MaxDD:         2.351
+    Win rate:              43.5%
+    EV per trade:          $13.47
+    Sub-band win rate:     0.0%
+    Sub-band EV/trade:     $0.00
+    Sub-band activations:  0
+    Sub CB fires:          0
+
+----------------------------------------------------------------------------------------------------
+Best PnL/DD: si=0.5, so=1.25, target=to_opposite_inner, switch-back=R1, sub CB=3
+----------------------------------------------------------------------------------------------------
+
+  Metric                           Calibration         Holdout
+  ----------------------------  --------------  --------------
+  Total PnL ($)                         $34935      $26,219.27
+  PnL/MaxDD                               3.37           1.711
+
+  Holdout details:
+    Total trades:          2432
+    Main trades:           2297
+    Sub-band trades:       135
+    Up days:               33
+    Down days:             30
+    Win day %:             52.4%
+    Avg up day:            $2,270.69
+    Avg down day:          $-1,623.79
+    Worst single day:      $-3,245.47
+    Max drawdown:          $15,326.94
+    Net PnL/MaxDD:         1.711
+    Win rate:              42.8%
+    EV per trade:          $10.78
+    Sub-band win rate:     30.4%
+    Sub-band EV/trade:     $-41.60
+    Sub-band activations:  63
+    Sub CB fires:          20
+
+----------------------------------------------------------------------------------------------------
+Best PnL: si=0.5, so=1.25, target=to_opposite_inner, switch-back=sub_cb_only, sub CB=5
+----------------------------------------------------------------------------------------------------
+
+  Metric                           Calibration         Holdout
+  ----------------------------  --------------  --------------
+  Total PnL ($)                         $47975      $22,240.84
+  PnL/MaxDD                               2.99           1.374
+
+  Holdout details:
+    Total trades:          1719
+    Main trades:           936
+    Sub-band trades:       783
+    Up days:               33
+    Down days:             30
+    Win day %:             52.4%
+    Avg up day:            $2,352.15
+    Avg down day:          $-1,846.00
+    Worst single day:      $-3,066.25
+    Max drawdown:          $16,187.13
+    Net PnL/MaxDD:         1.374
+    Win rate:              38.5%
+    EV per trade:          $12.94
+    Sub-band win rate:     32.7%
+    Sub-band EV/trade:     $18.01
+    Sub-band activations:  63
+    Sub CB fires:          40
+
+----------------------------------------------------------------------------------------------------
+Runner-up PnL/DD: si=0.5, so=1.25, target=3.0x, switch-back=R5, sub CB=5
+----------------------------------------------------------------------------------------------------
+
+  Metric                           Calibration         Holdout
+  ----------------------------  --------------  --------------
+  Total PnL ($)                         $35188       $9,397.64
+  PnL/MaxDD                               3.16           0.475
+
+  Holdout details:
+    Total trades:          2034
+    Main trades:           1480
+    Sub-band trades:       554
+    Up days:               31
+    Down days:             32
+    Win day %:             49.2%
+    Avg up day:            $2,176.50
+    Avg down day:          $-1,814.81
+    Worst single day:      $-3,468.01
+    Max drawdown:          $19,792.39
+    Net PnL/MaxDD:         0.475
+    Win rate:              41.7%
+    EV per trade:          $4.62
+    Sub-band win rate:     41.2%
+    Sub-band EV/trade:     $36.58
+    Sub-band activations:  63
+    Sub CB fires:          11
+
+====================================================================================================
+CALIBRATION vs HOLDOUT COMPARISON
+====================================================================================================
+
+  Config                   Cal PnL        HO PnL  Cal PnL/DD   HO PnL/DD  HO Trades  HO WinR%     HO EV
+  --------------------  ----------  ------------  ----------  ----------  ---------  --------  --------
+  Baseline                  $33043    $33,545.32        2.13       2.351       2491     43.5%    $13.47
+  Best PnL/DD               $34935    $26,219.27        3.37       1.711       2432     42.8%    $10.78
+  Best PnL                  $47975    $22,240.84        2.99       1.374       1719     38.5%    $12.94
+  Runner-up PnL/DD          $35188     $9,397.64        3.16       0.475       2034     41.7%     $4.62

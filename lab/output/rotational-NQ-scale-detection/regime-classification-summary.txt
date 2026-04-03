@@ -1,0 +1,139 @@
+REGIME CLASSIFICATION ACCURACY TEST
+============================================================
+Data: NQ-250tick-calibration.csv (RTH only)
+Valid bars: 92,560
+Regime definition: 50-bar rolling stdDev of Close (ddof=0)
+Tercile boundaries: P33=10.3158, P67=16.1507
+Regime distribution: {'medium': np.int64(31035), 'low': np.int64(30868), 'high': np.int64(30657)}
+
+CLASSIFIER RANKING (by overall accuracy)
+------------------------------------------------------------
+  59.4%  Combined normalized avg (tercile)
+         Low:  recall=65.8%  precision=65.8%
+         Med:  recall=44.8%  precision=45.1%
+         High: recall=67.7%  precision=67.3%
+
+  55.9%  Speed-range 2D
+         Low:  recall=64.4%  precision=66.9%
+         Med:  recall=45.3%  precision=42.2%
+         High: recall=58.1%  precision=60.3%
+
+  53.8%  Bar speed (tercile, inverted)
+         Low:  recall=61.4%  precision=61.4%
+         Med:  recall=40.6%  precision=40.9%
+         High: recall=59.5%  precision=59.1%
+
+  53.4%  Bar range (optimized)
+         Low:  recall=66.7%  precision=59.7%
+         Med:  recall=38.0%  precision=41.5%
+         High: recall=55.5%  precision=57.5%
+
+  53.4%  Combined agree/fallback
+         Low:  recall=66.7%  precision=59.7%
+         Med:  recall=38.0%  precision=41.5%
+         High: recall=55.5%  precision=57.5%
+
+  53.2%  Bar range (tercile)
+         Low:  recall=62.1%  precision=62.1%
+         Med:  recall=40.8%  precision=40.8%
+         High: recall=56.9%  precision=56.9%
+
+  46.1%  StdDev ratio (optimized 0.50/0.60)
+         Low:  recall=67.3%  precision=44.4%
+         Med:  recall=13.3%  precision=33.7%
+         High: recall=57.8%  precision=52.9%
+
+  37.9%  StdDev ratio (default 0.7/1.5)
+         Low:  recall=89.7%  precision=40.2%
+         Med:  recall=21.7%  precision=29.3%
+         High: recall=2.0%  precision=100.0%
+
+LAG ANALYSIS (bars until trigger catches regime change)
+------------------------------------------------------------
+  Combined normalized avg (tercile)
+    mean=30.5  median=2.0  p75=28.0  p90=127.0
+    transitions=3120  caught=2978
+
+  StdDev ratio (optimized 0.50/0.60)
+    mean=34.8  median=8.0  p75=54.0  p90=113.0
+    transitions=3120  caught=3065
+
+  Bar speed (tercile, inverted)
+    mean=35.5  median=3.0  p75=38.0  p90=159.0
+    transitions=3120  caught=2871
+
+  Speed-range 2D
+    mean=36.1  median=4.0  p75=34.0  p90=176.0
+    transitions=3120  caught=2839
+
+  Bar range (tercile)
+    mean=42.1  median=7.0  p75=52.0  p90=200.0
+    transitions=3120  caught=2781
+
+  Bar range (optimized)
+    mean=42.3  median=7.0  p75=52.0  p90=200.0
+    transitions=3120  caught=2777
+
+  Combined agree/fallback
+    mean=42.3  median=7.0  p75=52.0  p90=200.0
+    transitions=3120  caught=2777
+
+  StdDev ratio (default 0.7/1.5)
+    mean=80.9  median=42.0  p75=200.0  p90=200.0
+    transitions=3120  caught=2271
+
+CONFUSION MATRICES
+------------------------------------------------------------
+
+  StdDev ratio (default 0.7/1.5)
+      actual\predicted       low    medium      high
+                   low     27700      3168         0
+                medium     24285      6750         0
+                  high     16899     13154       604
+
+  StdDev ratio (optimized 0.50/0.60)
+      actual\predicted       low    medium      high
+                   low     20789      4316      5763
+                medium     16900      4124     10011
+                  high      9139      3801     17717
+
+  Bar range (tercile)
+      actual\predicted       low    medium      high
+                   low     19178      8728      2962
+                medium      8122     12653     10260
+                  high      3575      9631     17451
+
+  Bar range (optimized)
+      actual\predicted       low    medium      high
+                   low     20603      7521      2744
+                medium      9414     11799      9822
+                  high      4514      9135     17008
+
+  Bar speed (tercile, inverted)
+      actual\predicted       low    medium      high
+                   low     18939      8684      3245
+                medium      9046     12614      9375
+                  high      2869      9555     18233
+
+  Speed-range 2D
+      actual\predicted       low    medium      high
+                   low     19881      8365      2622
+                medium      7886     14045      9104
+                  high      1935     10899     17823
+
+  Combined agree/fallback
+      actual\predicted       low    medium      high
+                   low     20603      7521      2744
+                medium      9414     11799      9822
+                  high      4514      9135     17008
+
+  Combined normalized avg (tercile)
+      actual\predicted       low    medium      high
+                   low     20303      9281      1284
+                medium      8325     13901      8809
+                  high      2226      7671     20760
+
+Speed-range bucket mappings: {'fast_narrow': 'medium', 'fast_wide': 'high', 'slow_narrow': 'low', 'slow_wide': 'medium'}
+Optimized StdDev ratio thresholds: 0.50 / 0.60
+Bar range terciles: 6.4250 / 8.6750
+Bar speed terciles: 9.0647s / 15.7318s

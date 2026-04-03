@@ -1,0 +1,195 @@
+PRECURSOR CONDITION ANALYSIS — SUMMARY
+==================================================
+
+Block class distribution:
+  HIGH: 13 blocks
+  MEDIUM: 84 blocks
+  LOW: 37 blocks
+
+10-TRADE PRECURSOR AVERAGES BY BLOCK CLASS
+--------------------------------------------------
+
+  HIGH blocks (n=13):
+    Precursor win rate: 40.8%
+    std100: 17.8725
+    avg_range_10: 10.5025
+    avg_duration_10: 14.7208
+    range_bw_ratio: 0.4254
+    band_width: 26.8087
+    ema_position: 0.4653
+    price_position: 0.5415
+    stddev_ratio: 0.3374
+    hour: 11.5154
+
+  LOW blocks (n=36):
+    Precursor win rate: 49.2%
+    std100: 15.7012
+    avg_range_10: 8.1963
+    avg_duration_10: 15.0564
+    range_bw_ratio: 0.3896
+    band_width: 23.5517
+    ema_position: 0.4843
+    price_position: 0.4558
+    stddev_ratio: 0.3664
+    hour: 11.0222
+
+  MEDIUM blocks (n=84):
+    Precursor win rate: 42.5%
+    std100: 14.7996
+    avg_range_10: 8.1745
+    avg_duration_10: 15.2702
+    range_bw_ratio: 0.4036
+    band_width: 22.1994
+    ema_position: 0.4949
+    price_position: 0.4942
+    stddev_ratio: 0.3727
+    hour: 11.3560
+
+DIFFERENCE (HIGH - LOW) for 10-trade precursors:
+  std100: 2.1713
+  avg_range_10: 2.3062
+  avg_duration_10: -0.3356
+  range_bw_ratio: 0.0358
+  band_width: 3.2570
+  ema_position: -0.0189
+  price_position: 0.0857
+  stddev_ratio: -0.0290
+  hour: 0.4932
+  precursor_win_rate: -8.3974
+
+5-TRADE PRECURSOR AVERAGES BY BLOCK CLASS
+--------------------------------------------------
+
+  HIGH blocks (n=13):
+    Precursor win rate: 32.3%
+    std100: 20.1467
+    avg_range_10: 10.5727
+    avg_duration_10: 13.5200
+    range_bw_ratio: 0.3827
+    band_width: 30.2201
+    ema_position: 0.5086
+    price_position: 0.6721
+    stddev_ratio: 0.3495
+    hour: 11.5538
+
+  LOW blocks (n=36):
+    Precursor win rate: 53.9%
+    std100: 16.0374
+    avg_range_10: 8.3993
+    avg_duration_10: 14.8261
+    range_bw_ratio: 0.3878
+    band_width: 24.0561
+    ema_position: 0.4537
+    price_position: 0.3926
+    stddev_ratio: 0.3699
+    hour: 10.8556
+
+  MEDIUM blocks (n=84):
+    Precursor win rate: 41.7%
+    std100: 13.9757
+    avg_range_10: 8.0469
+    avg_duration_10: 15.5179
+    range_bw_ratio: 0.4130
+    band_width: 20.9636
+    ema_position: 0.4914
+    price_position: 0.5190
+    stddev_ratio: 0.3591
+    hour: 11.2714
+
+DIFFERENCE (HIGH - LOW) for 5-trade precursors:
+  std100: 4.1093
+  avg_range_10: 2.1734
+  avg_duration_10: -1.3061
+  range_bw_ratio: -0.0051
+  band_width: 6.1640
+  ema_position: 0.0549
+  price_position: 0.2795
+  stddev_ratio: -0.0203
+  hour: 0.6983
+  precursor_win_rate: -21.5812
+
+EFFECT SIZE RANKING (10-trade precursors, Cohen's d)
+--------------------------------------------------
+  Ranked by |effect size| — larger = more predictive of block type
+
+  avg_range_10          d=+0.864  (HIGH mean=10.5025, LOW mean=8.1963)
+  price_position        d=+0.588  (HIGH mean=0.5415, LOW mean=0.4558)
+  precursor_win_rate    d=-0.582  (HIGH mean=40.7692, LOW mean=49.1667)
+  range_bw_ratio        d=+0.463  (HIGH mean=0.4254, LOW mean=0.3896)
+  band_width            d=+0.390  (HIGH mean=26.8087, LOW mean=23.5517)
+  std100                d=+0.390  (HIGH mean=17.8725, LOW mean=15.7012)
+  hour                  d=+0.352  (HIGH mean=11.5154, LOW mean=11.0222)
+  ema_position          d=-0.267  (HIGH mean=0.4653, LOW mean=0.4843)
+  stddev_ratio          d=-0.214  (HIGH mean=0.3374, LOW mean=0.3664)
+  avg_duration_10       d=-0.043  (HIGH mean=14.7208, LOW mean=15.0564)
+
+TRANSITION ANALYSIS
+--------------------------------------------------
+
+  HIGH->LOW transitions: 9
+    avg delta std100: -1.2752
+    avg delta avg_range_10: -0.0953
+    avg delta avg_duration_10: -3.7267
+    avg delta range_bw_ratio: +0.0069
+    avg delta band_width: -1.9128
+    avg delta ema_position: +0.0185
+    avg delta price_position: +0.0125
+    avg delta stddev_ratio: -0.0381
+    avg delta hour: -1.6056
+
+  LOW->HIGH transitions: 6
+    avg delta std100: -0.3531
+    avg delta avg_range_10: -0.7644
+    avg delta avg_duration_10: +3.7042
+    avg delta range_bw_ratio: -0.0131
+    avg delta band_width: -0.5297
+    avg delta ema_position: -0.0382
+    avg delta price_position: -0.0665
+    avg delta stddev_ratio: +0.0333
+    avg delta hour: +0.7833
+
+FILTER TEST — BEST THRESHOLDS
+--------------------------------------------------
+  For each top condition, best thresholds at two retention levels.
+
+  avg_range_10:
+    [~70% HIGH kept] threshold: above 9.5315
+      HIGH kept: 9/13 (69.2%)
+      LOW filtered: 28/36 (77.8%)
+      PnL kept: 48800.30  (total: 35793.28, delta: +13007.02)
+    [~60% HIGH kept] threshold: above 9.6529
+      HIGH kept: 8/13 (61.5%)
+      LOW filtered: 29/36 (80.6%)
+      PnL kept: 47744.97  (total: 35793.28, delta: +11951.69)
+    [~50% HIGH kept] threshold: above 9.8956
+      HIGH kept: 7/13 (53.8%)
+      LOW filtered: 30/36 (83.3%)
+      PnL kept: 45277.20  (total: 35793.28, delta: +9483.92)
+
+  price_position:
+    [~70% HIGH kept] threshold: above 0.4558
+      HIGH kept: 9/13 (69.2%)
+      LOW filtered: 18/36 (50.0%)
+      PnL kept: 26360.50  (total: 35793.28, delta: -9432.78)
+    [~60% HIGH kept] threshold: above 0.5189
+      HIGH kept: 8/13 (61.5%)
+      LOW filtered: 28/36 (77.8%)
+      PnL kept: 29460.64  (total: 35793.28, delta: -6332.64)
+    [~50% HIGH kept] threshold: above 0.5189
+      HIGH kept: 8/13 (61.5%)
+      LOW filtered: 28/36 (77.8%)
+      PnL kept: 29460.64  (total: 35793.28, delta: -6332.64)
+
+  precursor_win_rate:
+    [~70% HIGH kept] threshold: below 40.7692
+      HIGH kept: 9/13 (69.2%)
+      LOW filtered: 20/36 (55.6%)
+      PnL kept: 37073.89  (total: 35793.28, delta: +1280.61)
+    [~60% HIGH kept] threshold: below 40.7692
+      HIGH kept: 9/13 (69.2%)
+      LOW filtered: 20/36 (55.6%)
+      PnL kept: 37073.89  (total: 35793.28, delta: +1280.61)
+    [~50% HIGH kept] threshold: below 40.7692
+      HIGH kept: 9/13 (69.2%)
+      LOW filtered: 20/36 (55.6%)
+      PnL kept: 37073.89  (total: 35793.28, delta: +1280.61)

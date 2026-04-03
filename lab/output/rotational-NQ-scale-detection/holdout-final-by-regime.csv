@@ -1,0 +1,10 @@
+threshold,label,regime,trades,win_rate,ev
+2,N=2 (candidate),low,1539,42.8,2.91
+2,N=2 (candidate),mid,909,42.4,1.23
+2,N=2 (candidate),high,313,48.9,87.84
+0,N=0 (no CB),low,1943,42.8,1.51
+0,N=0 (no CB),mid,1356,43.0,2.04
+0,N=0 (no CB),high,741,48.2,34.27
+3,N=3,low,1754,42.7,1.29
+3,N=3,mid,1131,42.7,3.83
+3,N=3,high,475,47.4,39.64

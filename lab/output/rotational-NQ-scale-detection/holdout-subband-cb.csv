@@ -1,0 +1,5 @@
+config_name,total_trades,main_trades,sub_trades,total_pnl,up_days,down_days,win_day_pct,avg_up_day,avg_down_day,worst_day,max_drawdown,pnl_dd_ratio,win_rate,ev_per_trade,sub_win_rate,sub_ev_per_trade,subband_activations,sub_cb_fires,cal_pnl,cal_pnl_dd
+Baseline,2491,2491,0,33545.32,35,28,55.6,2192.43,-1542.49,-2900.99,14269.0,2.351,43.5,13.47,0.0,0.0,0,0,33043,2.13
+Best PnL/DD,2432,2297,135,26219.27,33,30,52.4,2270.69,-1623.79,-3245.47,15326.94,1.711,42.8,10.78,30.4,-41.6,63,20,34935,3.37
+Best PnL,1719,936,783,22240.84,33,30,52.4,2352.15,-1846.0,-3066.25,16187.13,1.374,38.5,12.94,32.7,18.01,63,40,47975,2.99
+Runner-up PnL/DD,2034,1480,554,9397.64,31,32,49.2,2176.5,-1814.81,-3468.01,19792.39,0.475,41.7,4.62,41.2,36.58,63,11,35188,3.16

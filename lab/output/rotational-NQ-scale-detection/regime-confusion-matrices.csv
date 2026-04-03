@@ -1,0 +1,73 @@
+classifier,actual,predicted,count
+StdDev ratio (default 0.7/1.5),low,low,27700
+StdDev ratio (default 0.7/1.5),low,medium,3168
+StdDev ratio (default 0.7/1.5),low,high,0
+StdDev ratio (default 0.7/1.5),medium,low,24285
+StdDev ratio (default 0.7/1.5),medium,medium,6750
+StdDev ratio (default 0.7/1.5),medium,high,0
+StdDev ratio (default 0.7/1.5),high,low,16899
+StdDev ratio (default 0.7/1.5),high,medium,13154
+StdDev ratio (default 0.7/1.5),high,high,604
+StdDev ratio (optimized 0.50/0.60),low,low,20789
+StdDev ratio (optimized 0.50/0.60),low,medium,4316
+StdDev ratio (optimized 0.50/0.60),low,high,5763
+StdDev ratio (optimized 0.50/0.60),medium,low,16900
+StdDev ratio (optimized 0.50/0.60),medium,medium,4124
+StdDev ratio (optimized 0.50/0.60),medium,high,10011
+StdDev ratio (optimized 0.50/0.60),high,low,9139
+StdDev ratio (optimized 0.50/0.60),high,medium,3801
+StdDev ratio (optimized 0.50/0.60),high,high,17717
+Bar range (tercile),low,low,19178
+Bar range (tercile),low,medium,8728
+Bar range (tercile),low,high,2962
+Bar range (tercile),medium,low,8122
+Bar range (tercile),medium,medium,12653
+Bar range (tercile),medium,high,10260
+Bar range (tercile),high,low,3575
+Bar range (tercile),high,medium,9631
+Bar range (tercile),high,high,17451
+Bar range (optimized),low,low,20603
+Bar range (optimized),low,medium,7521
+Bar range (optimized),low,high,2744
+Bar range (optimized),medium,low,9414
+Bar range (optimized),medium,medium,11799
+Bar range (optimized),medium,high,9822
+Bar range (optimized),high,low,4514
+Bar range (optimized),high,medium,9135
+Bar range (optimized),high,high,17008
+"Bar speed (tercile, inverted)",low,low,18939
+"Bar speed (tercile, inverted)",low,medium,8684
+"Bar speed (tercile, inverted)",low,high,3245
+"Bar speed (tercile, inverted)",medium,low,9046
+"Bar speed (tercile, inverted)",medium,medium,12614
+"Bar speed (tercile, inverted)",medium,high,9375
+"Bar speed (tercile, inverted)",high,low,2869
+"Bar speed (tercile, inverted)",high,medium,9555
+"Bar speed (tercile, inverted)",high,high,18233
+Speed-range 2D,low,low,19881
+Speed-range 2D,low,medium,8365
+Speed-range 2D,low,high,2622
+Speed-range 2D,medium,low,7886
+Speed-range 2D,medium,medium,14045
+Speed-range 2D,medium,high,9104
+Speed-range 2D,high,low,1935
+Speed-range 2D,high,medium,10899
+Speed-range 2D,high,high,17823
+Combined agree/fallback,low,low,20603
+Combined agree/fallback,low,medium,7521
+Combined agree/fallback,low,high,2744
+Combined agree/fallback,medium,low,9414
+Combined agree/fallback,medium,medium,11799
+Combined agree/fallback,medium,high,9822
+Combined agree/fallback,high,low,4514
+Combined agree/fallback,high,medium,9135
+Combined agree/fallback,high,high,17008
+Combined normalized avg (tercile),low,low,20303
+Combined normalized avg (tercile),low,medium,9281
+Combined normalized avg (tercile),low,high,1284
+Combined normalized avg (tercile),medium,low,8325
+Combined normalized avg (tercile),medium,medium,13901
+Combined normalized avg (tercile),medium,high,8809
+Combined normalized avg (tercile),high,low,2226
+Combined normalized avg (tercile),high,medium,7671
+Combined normalized avg (tercile),high,high,20760

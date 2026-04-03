@@ -1,0 +1,5 @@
+config_id,label,total_trades,total_pnl,up_days,down_days,win_day_pct,avg_up_day,avg_down_day,worst_day,max_drawdown,pnl_dd_ratio,win_rate,ev_per_trade,trades_per_day
+baseline,Baseline: full RTH 09:30-15:45,2491,33545.32,35,28,55.6,2192.43,-1542.49,-2900.99,14269.0,2.351,43.5,13.47,39.54
+skip_lunch,Skip lunch: no entries 12:00-13:00,2223,25009.99,36,27,57.1,1909.67,-1619.93,-2697.77,12196.69,2.051,43.1,11.25,35.29
+afternoon,Afternoon only: 13:00-15:45,839,8780.37,36,25,59.0,854.17,-878.8,-3053.66,8482.94,1.035,43.6,10.47,13.75
+skip_open_lunch,"Skip open+lunch: 10:00-12:00, 13:00-15:45",1768,14687.69,33,30,52.4,1655.44,-1331.4,-2915.0,14596.73,1.006,43.1,8.31,28.06

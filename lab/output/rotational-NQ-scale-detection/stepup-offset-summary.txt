@@ -1,0 +1,79 @@
+STEP-UP STOP OFFSET GRID
+==============================================================================
+
+Config: LB=100, Inner=0.75, Outer=1.75, Qty=1 (no martingale)
+Data: c:/Projects/futures_pipeline/data/NQ-250tick-calibration.csv
+Bars: 127567
+Cost: $4.0/trade (deducted from PnL)
+NQ tick size: 0.25, tick value: $5.0
+RTH: 09:30-15:45
+Entry: bar close, ddof=0, same-bar re-entry, reversal logic
+Runtime: 2.2s
+
+Step-up logic:
+  After entry, if price reaches rolling mean (dynamic midline):
+    Long: bar high >= mean -> step-up armed
+    Short: bar low <= mean -> step-up armed
+  Once armed, stop moves to entry +/- offset_ticks * tick_size
+  Step-up stop checked real-time (bar high/low), exit at bar close
+  Original outer stop still active before midline reached
+  Step-up fires once per trade
+
+RESULTS
+------------------------------------------------------------------------------
+
+  Offset  Trades     Net PnL   WinDay%     AvgUp   AvgDown     Worst     MaxDD   PnL/DD   WinR%    EV/Tr
+                         ($)                 ($)       ($)       ($)       ($)                       ($)
+------------------------------------------------------------------------------
+     -40    4752       2,379     48.3%     2,742    -2,488    -9,642    19,970     0.12   41.9%     0.50
+     -20    5146      -6,459     50.0%     2,471    -2,686   -10,055    22,380    -0.29   40.3%    -1.26
+     -10    5473      -7,464     50.0%     2,454    -2,703    -9,778    22,675    -0.33   42.0%    -1.36
+       0    5865     -11,202     51.7%     2,276    -2,819    -8,751    29,241    -0.38   47.2%    -1.91
+      10    6083     -10,512     53.3%     2,095    -2,769    -9,149    26,243    -0.40   52.0%    -1.73
+      20    6171      -3,655     55.0%     2,092    -2,692    -9,359    20,323    -0.18   54.0%    -0.59
+      40    6240       5,836     55.0%     2,337    -2,640    -9,898    18,161     0.32   54.8%     0.94
+baseline    4430      28,902     55.0%     2,651    -2,169    -7,320     9,894     2.92   44.1%     6.52
+
+
+STEP-UP ACTIVITY
+------------------------------------------------------------------------------
+
+  Offset   Fired   Fired%  StopHit  TargetAfter
+------------------------------------------------------------------------------
+     -40    2608    54.9%      584         1348
+     -20    2846    55.3%      916         1381
+     -10    3072    56.1%     1229         1369
+       0    3374    57.5%     1847         1194
+      10    3545    58.3%     2291         1032
+      20    3612    58.5%     2602          857
+      40    3667    58.8%     3005          583
+baseline       0     0.0%        0            0
+
+
+ANALYSIS
+------------------------------------------------------------------------------
+
+Best Win Day %: offset=20 (55.0%)
+Best PnL/MaxDD: offset=none (2.92)
+Best Net PnL:   offset=none ($28,902)
+Best EV/trade:  offset=none ($6.52)
+Lowest MaxDD:   offset=none ($9,894)
+
+Best for daily consistency (Win Day % > PnL/MaxDD):
+  #1: offset=none -- WinDay%=55.0%, PnL/MaxDD=2.92, Net PnL=$28,902
+  #2: offset=40 -- WinDay%=55.0%, PnL/MaxDD=0.32, Net PnL=$5,836
+  #3: offset=20 -- WinDay%=55.0%, PnL/MaxDD=-0.18, Net PnL=$-3,655
+
+
+DELTA VS BASELINE (no step-up)
+------------------------------------------------------------------------------
+
+  Offset        dPnL   dWinDay%    dMaxDD   dPnL/DD    dEV/Tr
+------------------------------------------------------------------------------
+     -40     -26,523      -6.7%   +10,075     -2.80     -6.02
+     -20     -35,361      -5.0%   +12,486     -3.21     -7.78
+     -10     -36,366      -5.0%   +12,781     -3.25     -7.88
+       0     -40,104      -3.3%   +19,347     -3.30     -8.43
+      10     -39,413      -1.7%   +16,348     -3.32     -8.25
+      20     -32,557      +0.0%   +10,429     -3.10     -7.11
+      40     -23,065      +0.0%    +8,266     -2.60     -5.58

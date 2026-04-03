@@ -1,0 +1,9 @@
+classifier,overall_accuracy,low_recall,low_precision,medium_recall,medium_precision,high_recall,high_precision
+Combined normalized avg (tercile),0.5938,0.6577,0.6580,0.4479,0.4506,0.6772,0.6729
+Speed-range 2D,0.5591,0.6441,0.6693,0.4526,0.4217,0.5814,0.6032
+"Bar speed (tercile, inverted)",0.5379,0.6135,0.6138,0.4064,0.4088,0.5947,0.5910
+Bar range (optimized),0.5338,0.6675,0.5967,0.3802,0.4147,0.5548,0.5751
+Combined agree/fallback,0.5338,0.6675,0.5967,0.3802,0.4147,0.5548,0.5751
+Bar range (tercile),0.5324,0.6213,0.6211,0.4077,0.4080,0.5692,0.5689
+StdDev ratio (optimized 0.50/0.60),0.4606,0.6735,0.4439,0.1329,0.3369,0.5779,0.5290
+StdDev ratio (default 0.7/1.5),0.3787,0.8974,0.4021,0.2175,0.2926,0.0197,1.0000

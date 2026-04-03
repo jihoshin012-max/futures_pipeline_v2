@@ -1,0 +1,5 @@
+filter,trades,pnl,max_dd,pnl_dd,win_rate,avg_pnl,excluded_trades,excluded_pnl,excluded_wr
+Baseline (no filter),2675,34255.03,-15517.94,2.207,43.7,12.81,0,0.0,0.0
+A: range>=9.5 & slope<median,161,11576.45,-5071.7,2.283,49.1,71.9,2514,22678.58,43.3
+B: wide & contracting,995,23724.11,-11914.51,1.991,45.1,23.84,1680,10530.92,42.8
+C: FLAT_WIDE quadrant,467,12229.82,-7615.34,1.606,44.5,26.19,2208,22025.21,43.5

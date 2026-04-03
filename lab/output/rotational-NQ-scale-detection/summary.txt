@@ -1,0 +1,35 @@
+RANGE-FADE BAND PARAMETER ANALYSIS — SUMMARY
+Data: NQ 250-tick, 127567 bars, 2025-09-21 18:00:00 to 2025-12-14 23:56:43.227000
+Base parameters: lookback=50, innerMult=1.0, outerMult=2.0
+
+1. STDDEV REGIME ANALYSIS
+------------------------------------------------------------
+     Q1(low): avg_range=    5.59  avg_std=    6.63  inner_touch/100= 51.58  outer_touch/100= 13.39  n=25504
+          Q2: avg_range=    7.30  avg_std=   10.18  inner_touch/100= 54.52  outer_touch/100= 13.11  n=25503
+          Q3: avg_range=    8.38  avg_std=   13.39  inner_touch/100= 56.74  outer_touch/100= 13.24  n=25504
+          Q4: avg_range=    9.55  avg_std=   17.77  inner_touch/100= 59.46  outer_touch/100= 12.41  n=25503
+    Q5(high): avg_range=   11.63  avg_std=   29.03  inner_touch/100= 65.36  outer_touch/100= 10.40  n=25504
+  Inner touch rate: Q1=51.6/100 vs Q5=65.4/100 (1.3x)
+  Outer touch rate: Q1=13.4/100 vs Q5=10.4/100 (0.8x)
+
+2. TIME-OF-DAY ANALYSIS
+------------------------------------------------------------
+  Highest avg stddev: hour 18 (30.77)
+  Lowest avg stddev:  hour 15 (11.63)
+  Most inner touches/100:  hour 20 (62.8)
+  Fewest inner touches/100: hour 6 (48.3)
+
+3. LOOKBACK SENSITIVITY
+------------------------------------------------------------
+  LB= 20: inner_bw=   19.78  inner_touch/100= 57.24  outer_touch/100=  9.02  target_pct= 20.9%  (n=14598)
+  LB= 35: inner_bw=   25.92  inner_touch/100= 57.74  outer_touch/100= 11.27  target_pct= 18.4%  (n=14718)
+  LB= 50: inner_bw=   30.80  inner_touch/100= 57.53  outer_touch/100= 12.51  target_pct= 17.7%  (n=14649)
+  LB= 75: inner_bw=   37.56  inner_touch/100= 57.57  outer_touch/100= 13.38  target_pct= 16.1%  (n=14599)
+  LB=100: inner_bw=   43.30  inner_touch/100= 57.76  outer_touch/100= 13.86  target_pct= 15.2%  (n=14556)
+
+4. VOLATILITY EXPANSION/CONTRACTION
+------------------------------------------------------------
+   contracting: vol_ratio= 0.43  std50=   13.46  inner/100= 55.40  outer/100= 12.81  avg_gap=  2.5 bars  n=92414
+     expanding: vol_ratio= 1.62  std50=   52.65  inner/100= 81.76  outer/100= 18.03  avg_gap=289.9 bars  n=488
+        normal: vol_ratio= 0.91  std50=   20.07  inner/100= 62.93  outer/100= 11.62  avg_gap=  5.9 bars  n=34466
+  Distribution: expanding=488 bars (0.4%), contracting=92414 bars (72.6%), normal=34466 bars (27.1%)

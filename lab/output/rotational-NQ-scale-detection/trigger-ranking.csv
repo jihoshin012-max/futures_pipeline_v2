@@ -1,0 +1,10 @@
+trigger,avg_tercile_ev_spread,max_tercile_ev_spread,min_tercile_ev_spread,avg_abs_correlation,n_combos_measured
+bar_range,20.99,34.37,5.95,0.008659,5
+consecutive_stops,15.63,31.77,1.17,0.003103,5
+speed_range_regime,15.32,21.3,10.99,,5
+rolling_win_rate,11.49,20.19,1.62,0.010754,5
+bar_speed,9.48,14.83,4.53,0.004624,5
+range_speed,8.57,12.52,2.8,0.012803,5
+band_touch_rate,8.33,11.66,3.1,0.011316,5
+stddev_ratio,6.7,9.73,2.02,0.009543,5
+price_position_vs_midline,6.32,11.72,2.4,0.005199,5

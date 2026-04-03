@@ -1,0 +1,9 @@
+classifier,mean_lag,median_lag,p75_lag,p90_lag,n_transitions,n_caught
+Combined normalized avg (tercile),30.49,2.00,28.00,127.00,3120,2978
+StdDev ratio (optimized 0.50/0.60),34.76,8.00,54.00,113.00,3120,3065
+"Bar speed (tercile, inverted)",35.49,3.00,38.00,159.00,3120,2871
+Speed-range 2D,36.10,4.00,34.00,176.00,3120,2839
+Bar range (tercile),42.09,7.00,52.00,200.00,3120,2781
+Bar range (optimized),42.27,7.00,52.00,200.00,3120,2777
+Combined agree/fallback,42.27,7.00,52.00,200.00,3120,2777
+StdDev ratio (default 0.7/1.5),80.87,42.00,200.00,200.00,3120,2271

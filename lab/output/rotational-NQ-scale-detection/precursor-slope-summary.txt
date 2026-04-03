@@ -1,0 +1,61 @@
+PRECURSOR SLOPE ANALYSIS SUMMARY
+============================================================
+Total trades: 2685
+Total blocks: 134
+  HIGH (WR>=60%): 13
+  MEDIUM (40-60%): 84
+  LOW (WR<40%): 37
+
+TOP CONDITIONS SEPARATING PRE-HIGH vs PRE-LOW (10-trade precursor)
+------------------------------------------------------------
+  pre_avg_range_10                HIGH=  10.502  LOW=   8.196  sep_z=+0.790
+  pre_mean_slope_20               HIGH=  -0.093  LOW=  -0.010  sep_z=-0.586
+  precursor_win_rate              HIGH=  40.769  LOW=  49.167  sep_z=-0.550
+  precursor_avg_pnl               HIGH= -18.298  LOW=  42.711  sep_z=-0.499
+  pre_mean_slope_10               HIGH=  -0.075  LOW=  -0.014  sep_z=-0.481
+  pre_band_width                  HIGH=  26.809  LOW=  23.552  sep_z=+0.374
+  pre_std100                      HIGH=  17.872  LOW=  15.701  sep_z=+0.374
+  pre_abs_mean_slope_20           HIGH=   0.278  LOW=   0.240  sep_z=+0.343
+  pre_abs_mean_slope_10           HIGH=   0.269  LOW=   0.240  sep_z=+0.259
+  pre_bw_change_10                HIGH=  -0.941  LOW=  -0.931  sep_z=-0.009
+
+QUADRANT DISTRIBUTION (precursor conditions before blocks)
+------------------------------------------------------------
+  Before HIGH blocks:
+    FLAT_WIDE       :   7.7%
+    FLAT_NARROW     :  23.1%
+    ANGLED_WIDE     :  61.5%
+    ANGLED_NARROW   :   7.7%
+  Before LOW blocks:
+    FLAT_WIDE       :   8.3%
+    FLAT_NARROW     :  38.9%
+    ANGLED_WIDE     :  41.7%
+    ANGLED_NARROW   :  11.1%
+
+TRAJECTORY TRENDS (linear slope from trade -10 to -1)
+------------------------------------------------------------
+  Before HIGH blocks:
+    avg_avg_range_10              : 10.117 -> 11.100  (slope=+0.0652)
+    avg_band_width                : 24.888 -> 31.452  (slope=+1.0180)
+    avg_abs_mean_slope_10         : 0.203 -> 0.265  (slope=+0.0127)
+    avg_bw_change_10              : -0.968 -> 2.225  (slope=+0.2971)
+    win_rate                      : 61.538 -> 38.462  (slope=-3.9627)
+  Before LOW blocks:
+    avg_avg_range_10              : 8.404 -> 8.496  (slope=+0.0491)
+    avg_band_width                : 24.277 -> 22.920  (slope=+0.1485)
+    avg_abs_mean_slope_10         : 0.286 -> 0.243  (slope=-0.0010)
+    avg_bw_change_10              : -0.544 -> -1.420  (slope=-0.0681)
+    win_rate                      : 41.667 -> 47.222  (slope=+1.5320)
+
+COMBINED FILTER RESULTS
+------------------------------------------------------------
+  Baseline (no filter)                 trades= 2675  PnL=  34255.03  DD= -15517.94  PnL/DD= 2.207  WR= 43.7%
+  A: range>=9.5 & slope<median         trades=  161  PnL=  11576.45  DD=  -5071.70  PnL/DD= 2.283  WR= 49.1%
+  B: wide & contracting                trades=  995  PnL=  23724.11  DD= -11914.51  PnL/DD= 1.991  WR= 45.1%
+  C: FLAT_WIDE quadrant                trades=  467  PnL=  12229.82  DD=  -7615.34  PnL/DD= 1.606  WR= 44.5%
+
+EXCLUDED TRADE STATS
+------------------------------------------------------------
+  A: range>=9.5 & slope<median         excluded= 2514  excl_PnL=  22678.58  excl_WR= 43.3%
+  B: wide & contracting                excluded= 1680  excl_PnL=  10530.92  excl_WR= 42.8%
+  C: FLAT_WIDE quadrant                excluded= 2208  excl_PnL=  22025.21  excl_WR= 43.5%

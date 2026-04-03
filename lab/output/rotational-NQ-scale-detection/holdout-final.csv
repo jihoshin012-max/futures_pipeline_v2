@@ -1,0 +1,4 @@
+label,threshold,total_trades,total_pnl,up_days,down_days,win_day_pct,avg_up_day,avg_down_day,worst_day,best_day,max_drawdown,pnl_dd_ratio,win_rate,ev_per_trade,largest_loss,trades_per_day,cb_fired,trades_blocked,forced_opposite
+N=2 (candidate),2,2761,33085.86,37,26,58.7,2137.76,-1769.66,-6141.72,7620.6,16725.47,1.978,43.4,11.98,-1313.49,43.83,547,19400,512
+N=0 (no CB),0,4040,31080.99,36,27,57.1,2907.41,-2725.39,-6714.62,10761.34,22655.63,1.372,43.9,7.69,-1521.06,64.13,0,0,0
+N=3,3,3360,25432.43,34,29,54.0,2923.69,-2550.79,-8135.81,9201.48,22255.86,1.143,43.4,7.57,-1411.41,53.33,314,11201,292

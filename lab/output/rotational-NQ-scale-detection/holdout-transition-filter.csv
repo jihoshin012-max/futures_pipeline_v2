@@ -1,0 +1,4 @@
+id,label,total_trades,total_pnl,up_days,down_days,win_day_pct,avg_up_day,avg_down_day,worst_day,max_drawdown,pnl_dd_ratio,win_rate,ev_per_trade,trades_per_day,pct_bars_allowed,trades_avoided,cal_pnl,cal_pnl_dd,cal_trades
+1,Baseline (no filter),2491,33545.35,35,28,55.6,2192.43,-1542.49,-2900.99,14269.0,2.351,43.5,13.47,39.5,100.0,0,22303.0,1.2,
+2,F4: bw>med200 + scr<0,732,745.36,29,34,46.0,2165.95,-1825.51,-3000.09,24404.39,0.031,45.1,1.02,11.6,19.8,16326,22488.0,2.63,761
+3,F3: scr<0 only,2069,1381.86,31,32,49.2,1737.39,-1639.91,-2947.71,24637.45,0.056,42.7,0.67,32.8,50.5,5550,22303.0,2.01,

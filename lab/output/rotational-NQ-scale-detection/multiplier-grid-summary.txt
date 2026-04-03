@@ -1,0 +1,297 @@
+RANGE-FADE MULTIPLIER GRID SEARCH — SUMMARY (v4: ddof=0 + same-bar re-entry + reversals + RTH filter)
+===============================================================================================
+Data: 127567 bars, 73 trading days
+RTH bars (09:30-15:45): 93359 / 127567 (73.2%)
+Lookback: 50
+StdDev terciles: low <= 10.57, medium <= 16.63, high > 16.63
+Combinations tested: 27
+Combinations with trades: 27
+
+CORRECTIONS APPLIED:
+  1. StdDev uses ddof=0 (population std) — matches C++ sqrtf(sumSq / period).
+     Previous version used ddof=1 (sample std), overstating band width.
+  2. Same-bar re-entry after trade resolution — after a trade resolves at
+     bar j, bar j is re-checked for a new entry signal before advancing.
+  3. Reversal logic — while in a position, each bar is checked for opposite-
+     side entry signals. If the opposite signal fires (touch inner, stay inside
+     outer), the current position is exited at bar close and the opposite
+     direction is entered immediately at close with fresh target/stop offsets.
+     Priority: target > stop > reversal on same bar.
+  4. RTH time filter — new entries (fresh and reversal) only allowed during
+     09:30:00 - 15:45:00 ET. Target/stop exits continue outside RTH.
+     Matches C++ v3 study AllowNewEntryStartTime / AllowNewEntryEndTime.
+
+TOP 5 COMBINATIONS BY EXPECTED VALUE ($/contract/trade)
+-----------------------------------------------------------------------------------------------
+  inner=1.50  outer=2.00  |  EV=$4.73  WR=18.8%  PF=1.04  Trades=8394.0  R:R=6.00  MaxConsecL=35.0  Trades/day=115.0
+    exits: target=435.0  stop=6817.0  reversal=1142.0
+  inner=0.50  outer=2.00  |  EV=$4.30  WR=62.3%  PF=1.04  Trades=10747.0  R:R=0.67  MaxConsecL=8.0  Trades/day=147.2
+    exits: target=4770.0  stop=3564.0  reversal=2413.0
+  inner=1.50  outer=3.00  |  EV=$3.56  WR=40.4%  PF=1.02  Trades=4445.0  R:R=2.00  MaxConsecL=17.0  Trades/day=60.9
+    exits: target=718.0  stop=2638.0  reversal=1089.0
+  inner=0.75  outer=2.50  |  EV=$3.47  WR=57.7%  PF=1.02  Trades=7090.0  R:R=0.86  MaxConsecL=8.0  Trades/day=97.1
+    exits: target=2597.0  stop=2852.0  reversal=1641.0
+  inner=0.50  outer=1.75  |  EV=$3.46  WR=58.4%  PF=1.03  Trades=10966.0  R:R=0.80  MaxConsecL=11.0  Trades/day=150.2
+    exits: target=4551.0  stop=4133.0  reversal=2282.0
+
+REGIME BREAKDOWN FOR TOP 5
+-----------------------------------------------------------------------------------------------
+  inner=1.50  outer=2.00:
+       low: count= 3278  WR= 16.5%  EV=$   -1.21
+    medium: count= 2806  WR= 19.9%  EV=$   17.90
+      high: count= 2310  WR= 20.6%  EV=$   -2.83
+  inner=0.50  outer=2.00:
+       low: count= 5423  WR= 62.5%  EV=$    6.98
+    medium: count= 3370  WR= 62.0%  EV=$    1.79
+      high: count= 1954  WR= 62.6%  EV=$    1.17
+  inner=1.50  outer=3.00:
+       low: count= 1995  WR= 37.3%  EV=$    2.33
+    medium: count= 1512  WR= 41.1%  EV=$   13.05
+      high: count=  938  WR= 46.0%  EV=$   -9.13
+  inner=0.75  outer=2.50:
+       low: count= 3519  WR= 57.6%  EV=$    6.33
+    medium: count= 2305  WR= 57.0%  EV=$   -5.26
+      high: count= 1266  WR= 59.1%  EV=$   11.42
+  inner=0.50  outer=1.75:
+       low: count= 5478  WR= 58.5%  EV=$    4.88
+    medium: count= 3461  WR= 57.9%  EV=$    1.39
+      high: count= 2027  WR= 59.0%  EV=$    3.15
+
+REGIME PATTERNS ACROSS ALL COMBINATIONS
+-----------------------------------------------------------------------------------------------
+     low regime:  avg WR=39.9%  avg EV=$3.42  avg trades=3695  positive-EV combos=25/27
+  medium regime:  avg WR=40.2%  avg EV=$0.94  avg trades=2612  positive-EV combos=16/27
+    high regime:  avg WR=42.3%  avg EV=$0.07  avg trades=1718  positive-EV combos=10/27
+
+OVERALL STATISTICS
+-----------------------------------------------------------------------------------------------
+  Positive-EV combinations: 24/27
+  Negative-EV combinations: 3/27
+  Best EV: $4.73 (inner=1.5, outer=2.0)
+  Worst EV: $-0.91 (inner=0.75, outer=1.5)
+
+REVERSAL EXIT STATISTICS
+-----------------------------------------------------------------------------------------------
+  Total reversal exits across all combos: 39784
+  Total trades across all combos: 216695
+  Reversal exits as % of all trades: 18.4%
+
+FULL GRID (sorted by EV)
+-----------------------------------------------------------------------------------------------
+  inner  outer  Trades    WR%       EV$      PF    R:R  MaxCL  T/day   Tgt   Stp   Rev
+   1.50   2.00    8394   18.8      4.73    1.04   6.00     35  115.0   435  6817  1142
+   0.50   2.00   10747   62.3      4.30    1.04   0.67      8  147.2  4770  3564  2413
+   1.50   3.00    4445   40.4      3.56    1.02   2.00     17   60.9   718  2638  1089
+   0.75   2.50    7090   57.7      3.47    1.02   0.86      8   97.1  2597  2852  1641
+   0.50   1.75   10966   58.4      3.46    1.03   0.80     11  150.2  4551  4133  2282
+   1.25   2.00    7375   27.8      3.34    1.02   3.33     30  101.0   812  5317  1246
+   0.50   2.50    9907   67.1      3.05    1.02   0.50      7  135.7  4739  2663  2505
+   1.25   2.50    5626   38.3      2.95    1.02   2.00     18   77.1  1051  3454  1121
+   0.50   3.00    8883   70.5      2.95    1.02   0.40      7  121.7  4363  1933  2587
+   1.25   3.00    4574   47.2      2.91    1.01   1.43     11   62.7  1020  2382  1172
+   1.50   2.50    5829   30.5      2.78    1.02   3.00     22   79.8   694  4053  1082
+   0.75   3.00    6278   63.2      2.70    1.02   0.67      7   86.0  2423  2092  1763
+   1.00   1.75    8030   31.8      2.41    1.02   2.67     23  110.0  1215  5466  1349
+   1.00   1.25    8330   14.2      2.25    1.04   8.00     48  114.1   474  7147   709
+   0.75   2.00    7797   49.6      2.16    1.01   1.20     10  106.8  2480  3852  1465
+   1.00   2.00    7027   37.8      1.74    1.01   2.00     18   96.3  1424  4353  1250
+   1.50   1.75    8847   10.4      1.67    1.03  12.00     66  121.2   241  7926   680
+   1.00   3.00    5026   54.7      1.43    1.01   1.00      8   68.8  1443  2182  1401
+   1.25   1.50    8617   11.9      1.42    1.02  10.00     46  118.0   362  7592   663
+   0.50   1.50   11113   53.1      1.14    1.01   1.00     11  152.2  4178  4844  2091
+   1.25   1.75    8803   20.8      1.01    1.01   5.00     28  120.6   603  6968  1232
+   1.00   1.50    9164   24.3      0.65    1.01   4.00     20  125.5   882  6930  1352
+   0.75   1.75    8304   44.0      0.63    1.00   1.50     14  113.8  2292  4582  1430
+   1.00   2.50    5855   47.3      0.06    1.00   1.33     15   80.2  1558  3045  1252
+   0.50   1.25   10963   46.5     -0.39    1.00   1.33     15  150.2  3447  5576  1940
+   0.75   1.25    9635   29.3     -0.85    0.99   3.00     22  132.0  1405  6784  1446
+   0.75   1.50    9070   37.3     -0.91    0.99   2.00     17  124.2  1964  5625  1481
+
+SINGLE-DAY TRADE LOG: 10/10/2025 (inner=1.0, outer=2.0, RTH only)
+-----------------------------------------------------------------------------------------------
+  185 trades entering on 10/10/2025
+  bar 26217->26222  short  entry=25310.00  exit_type=reversal  PnL=+9.75pts ($+195.00)
+  bar 26222->26224   long  entry=25300.25  exit_type=stop  PnL=-6.53pts ($-130.58)
+  bar 26224->26228   long  entry=25297.00  exit_type=target  PnL=+13.25pts ($+264.95)
+  bar 26228->26230  short  entry=25306.50  exit_type=stop  PnL=-6.31pts ($-126.14)
+  bar 26230->26235  short  entry=25312.50  exit_type=stop  PnL=-6.40pts ($-127.97)
+  bar 26252->26285  short  entry=25338.75  exit_type=reversal  PnL=+4.25pts ($+85.00)
+  bar 26285->26286   long  entry=25334.50  exit_type=reversal  PnL=+3.00pts ($+60.00)
+  bar 26286->26287  short  entry=25337.50  exit_type=stop  PnL=-6.00pts ($-119.96)
+  bar 26287->26293  short  entry=25343.50  exit_type=stop  PnL=-6.13pts ($-122.62)
+  bar 26305->26338  short  entry=25367.50  exit_type=reversal  PnL=+10.75pts ($+215.00)
+  bar 26338->26342   long  entry=25356.75  exit_type=reversal  PnL=+11.50pts ($+230.00)
+  bar 26342->26348  short  entry=25368.25  exit_type=stop  PnL=-5.18pts ($-103.59)
+  bar 26361->26366  short  entry=25377.00  exit_type=stop  PnL=-7.73pts ($-154.52)
+  bar 26366->26377  short  entry=25385.50  exit_type=target  PnL=+16.84pts ($+336.72)
+  bar 26378->26381   long  entry=25363.75  exit_type=stop  PnL=-8.02pts ($-160.39)
+  bar 26392->26400   long  entry=25344.25  exit_type=stop  PnL=-13.26pts ($-265.14)
+  bar 26401->26431   long  entry=25329.75  exit_type=reversal  PnL=+17.25pts ($+345.00)
+  bar 26431->26440  short  entry=25347.00  exit_type=stop  PnL=-6.87pts ($-137.39)
+  bar 26448->26457  short  entry=25360.75  exit_type=target  PnL=+20.96pts ($+419.10)
+  bar 26458->26461   long  entry=25339.50  exit_type=stop  PnL=-10.57pts ($-211.31)
+  bar 26461->26462   long  entry=25326.00  exit_type=stop  PnL=-11.20pts ($-223.96)
+  bar 26466->26498   long  entry=25322.00  exit_type=target  PnL=+28.28pts ($+565.64)
+  bar 26498->26521  short  entry=25351.50  exit_type=reversal  PnL=+21.50pts ($+430.00)
+  bar 26521->26532   long  entry=25330.00  exit_type=stop  PnL=-7.56pts ($-151.24)
+  bar 26542->26563   long  entry=25311.25  exit_type=reversal  PnL=+25.25pts ($+505.00)
+  bar 26563->26583  short  entry=25336.50  exit_type=stop  PnL=-12.60pts ($-251.92)
+  bar 26583->26612  short  entry=25349.25  exit_type=reversal  PnL=+11.00pts ($+220.00)
+  bar 26612->26619   long  entry=25338.25  exit_type=stop  PnL=-5.85pts ($-116.96)
+  bar 26619->26624   long  entry=25339.00  exit_type=stop  PnL=-5.72pts ($-114.46)
+  bar 26624->26626   long  entry=25331.75  exit_type=stop  PnL=-5.63pts ($-112.58)
+  bar 26631->26636   long  entry=25333.75  exit_type=reversal  PnL=+4.00pts ($+80.00)
+  bar 26636->26638  short  entry=25337.75  exit_type=reversal  PnL=+5.25pts ($+105.00)
+  bar 26638->26643   long  entry=25332.50  exit_type=stop  PnL=-7.27pts ($-145.38)
+  bar 26644->26647   long  entry=25327.00  exit_type=stop  PnL=-6.62pts ($-132.30)
+  bar 26650->26657   long  entry=25321.75  exit_type=target  PnL=+14.89pts ($+297.73)
+  bar 26658->26669  short  entry=25339.75  exit_type=stop  PnL=-7.82pts ($-156.33)
+  bar 26675->26692  short  entry=25352.50  exit_type=target  PnL=+21.16pts ($+423.21)
+  bar 26703->26704   long  entry=25330.00  exit_type=stop  PnL=-7.10pts ($-142.09)
+  bar 26726->26739   long  entry=25267.75  exit_type=stop  PnL=-30.33pts ($-606.54)
+  bar 26739->26743   long  entry=25237.00  exit_type=stop  PnL=-33.60pts ($-672.05)
+  bar 26749->26770   long  entry=25211.25  exit_type=stop  PnL=-39.82pts ($-796.38)
+  bar 26781->26809   long  entry=25149.75  exit_type=stop  PnL=-35.67pts ($-713.48)
+  bar 26809->26816   long  entry=25112.25  exit_type=stop  PnL=-31.71pts ($-634.12)
+  bar 26819->26826   long  entry=25111.50  exit_type=stop  PnL=-33.14pts ($-662.71)
+  bar 26826->26853   long  entry=25071.25  exit_type=stop  PnL=-35.76pts ($-715.11)
+  bar 26863->26876   long  entry=25029.50  exit_type=target  PnL=+52.79pts ($+1055.78)
+  bar 26876->26896  short  entry=25084.25  exit_type=target  PnL=+53.71pts ($+1074.22)
+  bar 26896->26898   long  entry=25030.25  exit_type=stop  PnL=-20.39pts ($-407.88)
+  bar 26901->26923   long  entry=25013.50  exit_type=target  PnL=+44.98pts ($+899.59)
+  bar 26923->26941  short  entry=25067.00  exit_type=stop  PnL=-23.74pts ($-474.86)
+  bar 26943->26951  short  entry=25080.00  exit_type=target  PnL=+50.22pts ($+1004.31)
+  bar 26951->26975   long  entry=25027.00  exit_type=stop  PnL=-22.79pts ($-455.82)
+  bar 26975->26994   long  entry=25000.00  exit_type=reversal  PnL=+31.50pts ($+630.00)
+  bar 26994->26998  short  entry=25031.50  exit_type=stop  PnL=-17.67pts ($-353.42)
+  bar 27002->27006  short  entry=25042.25  exit_type=stop  PnL=-18.54pts ($-370.72)
+  bar 27013->27025  short  entry=25084.00  exit_type=target  PnL=+60.11pts ($+1202.12)
+  bar 27038->27055  short  entry=25072.75  exit_type=reversal  PnL=+17.50pts ($+350.00)
+  bar 27055->27063   long  entry=25055.25  exit_type=stop  PnL=-16.93pts ($-338.57)
+  bar 27063->27067   long  entry=25032.75  exit_type=stop  PnL=-14.64pts ($-292.82)
+  bar 27077->27082   long  entry=25011.50  exit_type=stop  PnL=-23.61pts ($-472.17)
+  bar 27093->27130   long  entry=24947.75  exit_type=stop  PnL=-40.20pts ($-803.93)
+  bar 27140->27148   long  entry=24888.75  exit_type=stop  PnL=-23.38pts ($-467.53)
+  bar 27149->27183   long  entry=24869.75  exit_type=stop  PnL=-27.70pts ($-554.08)
+  bar 27186->27190   long  entry=24855.50  exit_type=stop  PnL=-14.16pts ($-283.28)
+  bar 27198->27201   long  entry=24847.50  exit_type=stop  PnL=-19.66pts ($-393.16)
+  bar 27204->27229   long  entry=24819.75  exit_type=reversal  PnL=+37.25pts ($+745.00)
+  bar 27229->27233  short  entry=24857.00  exit_type=stop  PnL=-15.27pts ($-305.43)
+  bar 27243->27258  short  entry=24872.00  exit_type=target  PnL=+52.31pts ($+1046.29)
+  bar 27258->27274   long  entry=24817.25  exit_type=stop  PnL=-25.57pts ($-511.47)
+  bar 27277->27285   long  entry=24791.00  exit_type=stop  PnL=-29.53pts ($-590.69)
+  bar 27286->27322   long  entry=24763.50  exit_type=stop  PnL=-39.16pts ($-783.17)
+  bar 27335->27353   long  entry=24712.25  exit_type=stop  PnL=-25.24pts ($-504.75)
+  bar 27353->27367   long  entry=24683.25  exit_type=reversal  PnL=+38.25pts ($+765.00)
+  bar 27367->27368  short  entry=24721.50  exit_type=stop  PnL=-18.29pts ($-365.81)
+  bar 27368->27372  short  entry=24742.25  exit_type=stop  PnL=-17.83pts ($-356.64)
+  bar 27378->27402  short  entry=24751.00  exit_type=stop  PnL=-24.54pts ($-490.84)
+  bar 27402->27419  short  entry=24774.25  exit_type=reversal  PnL=+21.00pts ($+420.00)
+  bar 27419->27420   long  entry=24753.25  exit_type=stop  PnL=-12.03pts ($-240.65)
+  bar 27424->27433   long  entry=24737.75  exit_type=stop  PnL=-13.20pts ($-263.92)
+  bar 27446->27450   long  entry=24721.00  exit_type=stop  PnL=-28.78pts ($-575.65)
+  bar 27450->27464   long  entry=24701.25  exit_type=reversal  PnL=+41.75pts ($+835.00)
+  bar 27464->27469  short  entry=24743.00  exit_type=stop  PnL=-22.44pts ($-448.76)
+  bar 27471->27472  short  entry=24755.00  exit_type=stop  PnL=-20.42pts ($-408.31)
+  bar 27477->27492  short  entry=24781.00  exit_type=stop  PnL=-26.77pts ($-535.46)
+  bar 27492->27499  short  entry=24804.50  exit_type=stop  PnL=-35.24pts ($-704.73)
+  bar 27499->27508  short  entry=24831.50  exit_type=stop  PnL=-37.41pts ($-748.17)
+  bar 27511->27542  short  entry=24872.00  exit_type=reversal  PnL=+31.75pts ($+635.00)
+  bar 27542->27552   long  entry=24840.25  exit_type=stop  PnL=-21.22pts ($-424.35)
+  bar 27557->27585   long  entry=24825.50  exit_type=reversal  PnL=+33.25pts ($+665.00)
+  bar 27585->27588  short  entry=24858.75  exit_type=stop  PnL=-14.28pts ($-285.67)
+  bar 27596->27624  short  entry=24877.25  exit_type=reversal  PnL=+28.75pts ($+575.00)
+  bar 27624->27629   long  entry=24848.50  exit_type=target  PnL=+31.10pts ($+621.94)
+  bar 27629->27633  short  entry=24882.00  exit_type=target  PnL=+28.25pts ($+565.08)
+  bar 27633->27634   long  entry=24848.75  exit_type=stop  PnL=-13.32pts ($-266.47)
+  bar 27640->27645   long  entry=24836.25  exit_type=stop  PnL=-19.04pts ($-380.74)
+  bar 27654->27676   long  entry=24797.00  exit_type=reversal  PnL=+32.75pts ($+655.00)
+  bar 27676->27692  short  entry=24829.75  exit_type=reversal  PnL=+37.00pts ($+740.00)
+  bar 27692->27711   long  entry=24792.75  exit_type=stop  PnL=-16.00pts ($-319.92)
+  bar 27711->27714   long  entry=24778.50  exit_type=stop  PnL=-15.97pts ($-319.34)
+  bar 27717->27723   long  entry=24779.00  exit_type=stop  PnL=-17.58pts ($-351.51)
+  bar 27727->27734   long  entry=24781.75  exit_type=reversal  PnL=+25.25pts ($+505.00)
+  bar 27734->27746  short  entry=24807.00  exit_type=target  PnL=+29.98pts ($+599.54)
+  bar 27747->27755   long  entry=24766.25  exit_type=target  PnL=+32.45pts ($+649.01)
+  bar 27755->27758  short  entry=24786.00  exit_type=stop  PnL=-16.38pts ($-327.62)
+  bar 27758->27773  short  entry=24802.50  exit_type=reversal  PnL=+25.00pts ($+500.00)
+  bar 27773->27776   long  entry=24777.50  exit_type=stop  PnL=-16.14pts ($-322.89)
+  bar 27777->27782   long  entry=24761.75  exit_type=target  PnL=+31.26pts ($+625.11)
+  bar 27786->27791  short  entry=24802.25  exit_type=stop  PnL=-15.90pts ($-318.05)
+  bar 27791->27821  short  entry=24817.75  exit_type=target  PnL=+32.08pts ($+641.67)
+  bar 27822->27832   long  entry=24776.75  exit_type=stop  PnL=-17.87pts ($-357.36)
+  bar 27834->27838   long  entry=24768.25  exit_type=stop  PnL=-19.07pts ($-381.33)
+  bar 27839->27862   long  entry=24757.25  exit_type=reversal  PnL=+34.50pts ($+690.00)
+  bar 27862->27866  short  entry=24791.75  exit_type=stop  PnL=-16.29pts ($-325.88)
+  bar 27877->27902  short  entry=24825.75  exit_type=reversal  PnL=+31.00pts ($+620.00)
+  bar 27902->27921   long  entry=24794.75  exit_type=reversal  PnL=+35.00pts ($+700.00)
+  bar 27921->27932  short  entry=24829.75  exit_type=target  PnL=+30.71pts ($+614.30)
+  bar 27933->27940   long  entry=24786.50  exit_type=stop  PnL=-12.40pts ($-247.96)
+  bar 27948->27996   long  entry=24766.50  exit_type=stop  PnL=-20.26pts ($-405.10)
+  bar 28006->28034   long  entry=24732.00  exit_type=stop  PnL=-21.00pts ($-419.99)
+  bar 28042->28052   long  entry=24702.25  exit_type=stop  PnL=-15.95pts ($-319.07)
+  bar 28056->28078   long  entry=24682.50  exit_type=stop  PnL=-21.59pts ($-431.76)
+  bar 28078->28114   long  entry=24662.75  exit_type=stop  PnL=-16.35pts ($-327.02)
+  bar 28116->28122   long  entry=24659.50  exit_type=stop  PnL=-12.75pts ($-254.90)
+  bar 28124->28125   long  entry=24655.00  exit_type=stop  PnL=-13.66pts ($-273.19)
+  bar 28126->28128   long  entry=24651.25  exit_type=stop  PnL=-14.23pts ($-284.63)
+  bar 28128->28133   long  entry=24637.50  exit_type=stop  PnL=-15.25pts ($-304.93)
+  bar 28135->28166   long  entry=24624.75  exit_type=stop  PnL=-18.95pts ($-378.98)
+  bar 28166->28176   long  entry=24606.25  exit_type=target  PnL=+30.54pts ($+610.71)
+  bar 28185->28194  short  entry=24646.50  exit_type=target  PnL=+28.97pts ($+579.42)
+  bar 28195->28206   long  entry=24613.25  exit_type=target  PnL=+32.13pts ($+642.70)
+  bar 28206->28211  short  entry=24640.00  exit_type=stop  PnL=-16.21pts ($-324.28)
+  bar 28211->28218  short  entry=24651.00  exit_type=stop  PnL=-16.81pts ($-336.23)
+  bar 28218->28233  short  entry=24667.00  exit_type=target  PnL=+34.72pts ($+694.37)
+  bar 28236->28244   long  entry=24624.50  exit_type=target  PnL=+33.61pts ($+672.15)
+  bar 28246->28251  short  entry=24668.75  exit_type=stop  PnL=-15.55pts ($-310.96)
+  bar 28256->28273  short  entry=24680.75  exit_type=stop  PnL=-16.25pts ($-324.98)
+  bar 28273->28280  short  entry=24696.00  exit_type=stop  PnL=-19.58pts ($-391.60)
+  bar 28280->28318  short  entry=24710.75  exit_type=stop  PnL=-23.25pts ($-465.09)
+  bar 28325->28337  short  entry=24735.25  exit_type=stop  PnL=-11.82pts ($-236.38)
+  bar 28339->28348  short  entry=24748.50  exit_type=target  PnL=+27.65pts ($+552.92)
+  bar 28349->28361   long  entry=24711.00  exit_type=target  PnL=+28.86pts ($+577.18)
+  bar 28362->28366  short  entry=24736.25  exit_type=reversal  PnL=+16.25pts ($+325.00)
+  bar 28366->28376   long  entry=24720.00  exit_type=stop  PnL=-9.27pts ($-185.44)
+  bar 28378->28383   long  entry=24709.50  exit_type=stop  PnL=-11.11pts ($-222.29)
+  bar 28395->28432   long  entry=24685.00  exit_type=stop  PnL=-22.70pts ($-454.01)
+  bar 28432->28437   long  entry=24671.75  exit_type=stop  PnL=-12.93pts ($-258.62)
+  bar 28437->28474   long  entry=24659.25  exit_type=stop  PnL=-14.11pts ($-282.29)
+  bar 28475->28478   long  entry=24658.75  exit_type=stop  PnL=-10.00pts ($-200.03)
+  bar 28478->28489   long  entry=24648.00  exit_type=target  PnL=+19.80pts ($+395.98)
+  bar 28489->28491  short  entry=24671.50  exit_type=stop  PnL=-10.62pts ($-212.36)
+  bar 28491->28493  short  entry=24678.50  exit_type=target  PnL=+21.76pts ($+435.15)
+  bar 28496->28503  short  entry=24677.50  exit_type=target  PnL=+20.77pts ($+415.36)
+  bar 28507->28509  short  entry=24680.00  exit_type=target  PnL=+22.74pts ($+454.79)
+  bar 28511->28516   long  entry=24656.00  exit_type=reversal  PnL=+13.50pts ($+270.00)
+  bar 28516->28517  short  entry=24669.50  exit_type=stop  PnL=-9.99pts ($-199.73)
+  bar 28517->28519  short  entry=24679.50  exit_type=stop  PnL=-10.18pts ($-203.50)
+  bar 28529->28533  short  entry=24694.25  exit_type=target  PnL=+30.83pts ($+616.67)
+  bar 28535->28540   long  entry=24660.25  exit_type=target  PnL=+28.26pts ($+565.11)
+  bar 28540->28544  short  entry=24690.75  exit_type=stop  PnL=-13.57pts ($-271.47)
+  bar 28544->28553  short  entry=24704.00  exit_type=stop  PnL=-13.99pts ($-279.80)
+  bar 28554->28574  short  entry=24709.75  exit_type=reversal  PnL=+28.50pts ($+570.00)
+  bar 28574->28576   long  entry=24681.25  exit_type=stop  PnL=-15.23pts ($-304.61)
+  bar 28576->28594   long  entry=24669.50  exit_type=stop  PnL=-15.81pts ($-316.24)
+  bar 28599->28623   long  entry=24647.50  exit_type=stop  PnL=-20.45pts ($-408.95)
+  bar 28626->28638   long  entry=24639.75  exit_type=stop  PnL=-13.87pts ($-277.32)
+  bar 28646->28661   long  entry=24616.25  exit_type=stop  PnL=-14.28pts ($-285.55)
+  bar 28661->28667   long  entry=24599.00  exit_type=stop  PnL=-17.07pts ($-341.43)
+  bar 28671->28704   long  entry=24579.75  exit_type=reversal  PnL=+30.50pts ($+610.00)
+  bar 28704->28706  short  entry=24610.25  exit_type=stop  PnL=-10.34pts ($-206.77)
+  bar 28714->28744  short  entry=24609.50  exit_type=reversal  PnL=+11.25pts ($+225.00)
+  bar 28744->28751   long  entry=24598.25  exit_type=stop  PnL=-11.97pts ($-239.34)
+  bar 28762->28792   long  entry=24570.00  exit_type=reversal  PnL=+18.25pts ($+365.00)
+  bar 28792->28799  short  entry=24588.25  exit_type=target  PnL=+22.19pts ($+443.88)
+  bar 28799->28800   long  entry=24565.50  exit_type=stop  PnL=-8.53pts ($-170.68)
+  bar 28802->28804   long  entry=24562.00  exit_type=stop  PnL=-8.69pts ($-173.72)
+  bar 28805->28809   long  entry=24559.50  exit_type=stop  PnL=-9.25pts ($-184.94)
+  bar 28810->28816   long  entry=24562.75  exit_type=stop  PnL=-9.41pts ($-188.19)
+  bar 28816->28820   long  entry=24550.50  exit_type=stop  PnL=-10.42pts ($-208.47)
+  bar 28833->28864   long  entry=24520.75  exit_type=stop  PnL=-20.22pts ($-404.42)
+  bar 28876->28881   long  entry=24492.75  exit_type=stop  PnL=-17.42pts ($-348.35)
+  bar 28881->28890   long  entry=24475.50  exit_type=stop  PnL=-20.34pts ($-406.88)
+  bar 28892->28911   long  entry=24456.25  exit_type=reversal  PnL=+38.50pts ($+770.00)
+  bar 28911->28919  short  entry=24494.75  exit_type=stop  PnL=-16.53pts ($-330.65)
+  bar 28923->28937  short  entry=24505.75  exit_type=stop  PnL=-18.54pts ($-370.77)
+  bar 28937->28943  short  entry=24523.50  exit_type=stop  PnL=-22.43pts ($-448.64)

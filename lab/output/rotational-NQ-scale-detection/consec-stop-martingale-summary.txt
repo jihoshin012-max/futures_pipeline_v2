@@ -1,0 +1,39 @@
+====================================================================================================
+MARTINGALE SIZING TEST -- RANGEFADE ROTATION (N=2 CIRCUIT BREAKER)
+====================================================================================================
+Config: LB=100, Inner=0.75, Outer=1.75, N=2
+Data: NQ-250tick-calibration.csv (127567 bars)
+Cost: $4.0/trade * qty, RTH: 09:30-15:45, ddof=0
+
+Martingale logic:
+  - Base qty = 1
+  - Next trade qty = floor(1 * mult^consecutiveStops), capped at max
+  - Per-side counters (same as circuit breaker)
+  - Win resets counter to 0
+  - Losing reversal increments, winning reversal resets
+  - Daily reset, forced-opposite resets both counters
+
+          Config  Trades      PnL($)   Up   Dn  WinD%      AvgUp      AvgDn      Worst      MaxDD   PnL/DD    WR%     EV/T    MaxLoss  T/Day
+--------------------------------------------------------------------------------------------------------------------------------------------
+   no-martingale    2963    33227.92   30   30   50.0    2701.12   -1593.51   -5227.58   17680.87    1.879   43.5    11.21   -1468.46  49.38
+       m1.5-max2    2963    33227.92   30   30   50.0    2701.12   -1593.51   -5227.58   17680.87    1.879   43.5    11.21   -1468.46  49.38
+       m1.5-max3    2963    33227.92   30   30   50.0    2701.12   -1593.51   -5227.58   17680.87    1.879   43.5    11.21   -1468.46  49.38
+       m2.0-max2    2963    37461.08   33   27   55.0    3253.91   -2589.55   -6894.48   21324.28    1.757   43.5    12.64   -2936.91  49.38
+       m2.0-max3    2963    37461.08   33   27   55.0    3253.91   -2589.55   -6894.48   21324.28    1.757   43.5    12.64   -2936.91  49.38
+
+====================================================================================================
+DELTAS VS BASELINE (no-martingale)
+====================================================================================================
+Baseline: 2963 trades, PnL=$33227.92, MaxDD=$17680.87, PnL/DD=1.879
+
+     m1.5-max2: PnL      +0.00, MaxDD     +0.00, PnL/DD  +0.000, Worst day -5227.58, Max single loss -1468.46
+     m1.5-max3: PnL      +0.00, MaxDD     +0.00, PnL/DD  +0.000, Worst day -5227.58, Max single loss -1468.46
+     m2.0-max2: PnL   +4233.16, MaxDD  +3643.41, PnL/DD  -0.122, Worst day -6894.48, Max single loss -2936.91
+     m2.0-max3: PnL   +4233.16, MaxDD  +3643.41, PnL/DD  -0.122, Worst day -6894.48, Max single loss -2936.91
+
+NOTE: With N=2 circuit breaker, the per-side counter can only be 0 or 1
+when entering a trade (at 2 the side is blocked). Therefore:
+  - mult=1.5: floor(1 * 1.5^0)=1, floor(1 * 1.5^1)=1 -> qty always 1 (no effect)
+  - mult=2.0: floor(1 * 2.0^0)=1, floor(1 * 2.0^1)=2 -> qty=2 after 1 consecutive stop
+  - max=2 vs max=3: identical because max possible qty is 2 (consec can only be 0 or 1)
+

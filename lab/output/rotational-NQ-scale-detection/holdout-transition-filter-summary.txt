@@ -1,0 +1,49 @@
+========================================================================================================================
+HOLDOUT VALIDATION: TRANSITION FILTER (F4 / F3)
+========================================================================================================================
+Holdout data: NQ-250tick-holdout.csv (121595 bars)
+Date range: 12/15/2025 to 3/13/2026
+Config: LB=100, Inner=0.75, Outer=1.75, CB N=2, MDL=$2500.0
+Cost: $4.0/trade, Qty=1, No martingale, No step-up
+RTH: 09:30-15:45, Entry at bar close, ddof=0
+Filter params: bw_median_window=200, slope_lb=10
+
+Filter definitions:
+  F3: slope_change_rate < 0 (declining slope)
+  F4: band_width > rolling_200_median AND slope_change_rate < 0
+  band_width = inner_top - inner_bot = 2 * inner_mult * std100
+  abs_slope_10 = abs((mean100[i] - mean100[i-10]) / 10)
+  slope_change_rate = (abs_slope_10[i] - abs_slope_10[i-10]) / 10
+
+HOLDOUT RESULTS
+------------------------------------------------------------------------------------------------------------------------
+ #                    Config  Trades      PnL($)   Up   Dn  WinD%    AvgUp($)    AvgDn($)    Worst($)    MaxDD($)   PnL/DD    WR%   EV/T($)  T/Day
+--------------------------------------------------------------------------------------------------------------------------------------------------
+ 1      Baseline (no filter)    2491    33545.35   35   28   55.6     2192.43    -1542.49    -2900.99    14269.00    2.351   43.5     13.47   39.5
+ 2     F4: bw>med200 + scr<0     732      745.36   29   34   46.0     2165.95    -1825.51    -3000.09    24404.39    0.031   45.1      1.02   11.6
+ 3            F3: scr<0 only    2069     1381.86   31   32   49.2     1737.39    -1639.91    -2947.71    24637.45    0.056   42.7      0.67   32.8
+
+
+CALIBRATION vs HOLDOUT COMPARISON
+------------------------------------------------------------------------------------------------------------------------
+ #                    Config   Cal PnL($)    HO PnL($)   PnL Delta  Cal PnL/DD   HO PnL/DD  Ratio Delta  Cal Trades   HO Trades
+-------------------------------------------------------------------------------------------------------------------------------
+ 1      Baseline (no filter)     22303.00     33545.35   +11242.35       1.200       2.351       +1.151         N/A        2491
+ 2     F4: bw>med200 + scr<0     22488.00       745.36   -21742.64       2.630       0.031       -2.599         761         732
+ 3            F3: scr<0 only     22303.00      1381.86   -20921.14       2.010       0.056       -1.954         N/A        2069
+
+
+PER-CONFIG NOTES
+------------------------------------------------------------------------------------------------------------------------
+  #1 Baseline (no filter):
+    Holdout PnL retention vs calibration: 150.4%
+
+  #2 F4: bw>med200 + scr<0:
+    Holdout PnL retention vs calibration: 3.3%
+    vs holdout baseline: PnL $-32799.99, PnL/DD -2.320
+
+  #3 F3: scr<0 only:
+    Holdout PnL retention vs calibration: 6.2%
+    vs holdout baseline: PnL $-32163.49, PnL/DD -2.295
+
+

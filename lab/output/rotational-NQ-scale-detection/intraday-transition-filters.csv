@@ -1,0 +1,7 @@
+filter,trades,total_pnl_net,max_dd,pnl_dd_ratio,win_rate,ev_per_trade
+Baseline (no filter),2685,22302.73,18661.94,1.195,0.4358,8.31
+F1: bw>median AND RANGING,868,4055.5,15966.8,0.254,0.4286,4.67
+F2: bw>median AND (TRANSITION or RANGING),1158,14117.71,15000.0,0.941,0.4344,12.19
+F3: slope_change_rate < 0,1619,19475.3,9694.95,2.009,0.4379,12.03
+F4: bw>median AND slope_change_rate < 0,761,22487.49,8554.77,2.629,0.452,29.55
+F5: abs_slope_10 < session median,2065,9413.73,14792.19,0.636,0.432,4.56

@@ -1,0 +1,60 @@
+HOLDOUT SWITCHING VALIDATION
+================================================================================
+Holdout data: 121595 bars, 63 RTH trading days
+Period: 12/15/2025 to 3/13/2026
+Calibration rolling_win_rate P33 threshold: 0.1
+Holdout stdDev terciles: P33=12.1421, P67=18.2327
+
+SYSTEM COMPARISON
+--------------------------------------------------------------------------------
+System                     Trades     WR%    EV($)     PnL($)   MaxDD($)  PnL/DD      PF  MaxCL   BigLoss
+---------------------------------------------------------------------------------------------------------
+C1_static_0.75_2.50          6575    58.0     7.67   50440.14   21689.26   2.326   1.041     10  -2043.21
+C2_static_1.50_2.00          7815    18.3     0.74    5820.66   36373.13   0.160   1.006     40   -598.55
+C3_static_1.00_2.00          6505    37.9     2.58   16807.48   27148.28   0.619   1.015     14  -1080.74
+A1_switch_R3N5               7159    28.6     4.87   34852.96   18869.30   1.847   1.034     18  -1505.77
+A2_switch_R1                 7235    24.3     4.37   31646.25   22559.93   1.403   1.032     18  -1806.31
+B_switch_R1_mart             7235    24.3    10.07   72882.97   64297.61   1.134   1.036     18  -6096.28
+
+SWITCHING CONFIG BREAKDOWN
+--------------------------------------------------------------------------------
+  A1_switch_R3N5: 5317 main + 1842 sub trades
+  A2_switch_R1: 6096 main + 1139 sub trades
+  B_switch_R1_mart: 6096 main + 1139 sub trades
+
+REGIME BREAKDOWN (holdout stdDev terciles)
+--------------------------------------------------------------------------------
+System                    Regime      Trades     WR%    EV($)
+-------------------------------------------------------------
+C1_static_0.75_2.50       low_vol       3136    56.6     1.36
+C1_static_0.75_2.50       mid_vol       2160    58.7    11.94
+C1_static_0.75_2.50       high_vol      1279    60.3    15.95
+C2_static_1.50_2.00       low_vol       2831    15.7    -4.39
+C2_static_1.50_2.00       mid_vol       2538    18.4     5.64
+C2_static_1.50_2.00       high_vol      2446    21.0     1.61
+C3_static_1.00_2.00       low_vol       2810    35.3    -3.04
+C3_static_1.00_2.00       mid_vol       2068    38.9    16.49
+C3_static_1.00_2.00       high_vol      1627    41.2    -5.37
+A1_switch_R3N5            low_vol       2830    27.5    -0.63
+A1_switch_R3N5            mid_vol       2346    28.9     6.18
+A1_switch_R3N5            high_vol      1983    29.7    11.16
+A2_switch_R1              low_vol       2847    21.4    -3.29
+A2_switch_R1              mid_vol       2380    25.0     8.94
+A2_switch_R1              high_vol      2008    27.6     9.83
+B_switch_R1_mart          low_vol       2847    21.4    -6.24
+B_switch_R1_mart          mid_vol       2380    25.0    12.46
+B_switch_R1_mart          high_vol      2008    27.6    30.38
+
+KEY COMPARISONS
+--------------------------------------------------------------------------------
+  A1 (switch R3_N5) vs static 0.75/2.50: EV $4.87 vs $7.67 (diff: $-2.80)
+  A1 (switch R3_N5) vs static 1.50/2.00: EV $4.87 vs $0.74 (diff: $+4.13)
+  A2 (switch R1) vs static 0.75/2.50: EV $4.37 vs $7.67 (diff: $-3.30)
+  A2 (switch R1) vs static 1.50/2.00: EV $4.37 vs $0.74 (diff: $+3.63)
+  B (switch R1 + mart) vs static 0.75/2.50: EV $10.07 vs $7.67 (diff: $+2.40)
+
+  Best static config on holdout: C1_static_0.75_2.50 (EV=$7.67)
+  A1 beat static 0.75/2.50? NO
+  A2 beat static 0.75/2.50? NO
+  A1 beat best static? NO
+  A2 beat best static? NO

@@ -1,0 +1,10 @@
+condition,threshold,accuracy,direction,wr_above_thresh,wr_below_thresh,n_above,n_below
+avg_range_10,11.555,0.84,HIGH_above,51.74,41.94,23,111
+std100,21.241745,0.8,HIGH_above,50.23,42.32,22,112
+band_width,31.862618,0.8,HIGH_above,50.23,42.32,22,112
+range_bw_ratio,0.443252,0.78,HIGH_above,49.4,42.29,25,109
+hour,12.425,0.78,HIGH_above,47.14,42.69,28,106
+avg_duration_10,6.3075,0.76,HIGH_below,43.47,50.0,131,3
+stddev_ratio,0.450228,0.76,HIGH_above,47.4,42.75,25,109
+price_position,0.307084,0.74,HIGH_below,43.6,44.0,129,5
+ema_position,0.390525,0.72,HIGH_below,43.69,41.25,130,4

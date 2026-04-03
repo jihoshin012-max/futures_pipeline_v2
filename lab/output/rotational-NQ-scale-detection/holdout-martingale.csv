@@ -1,0 +1,6 @@
+inner_mult,outer_mult,martingale,total_trades,total_pnl,max_drawdown,pnl_maxdd_ratio,profit_factor,largest_loss,max_consec_losses
+1.5,2.0,no_martingale,7815,5820.66,36373.13,0.16,1.0059,-598.55,40
+1.5,2.0,m1.5_max3,7815,-28338.78,99072.69,-0.286,0.9875,-1781.54,40
+0.5,2.0,no_martingale,9959,14325.6,37923.94,0.3777,1.0102,-1717.69,10
+0.5,1.75,no_martingale,10049,-3472.92,45905.55,-0.0757,0.9974,-1392.65,10
+0.5,1.75,m2.0_max4,10049,-41091.45,126292.05,-0.3254,0.9848,-5570.61,10
