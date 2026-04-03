@@ -4,9 +4,7 @@ Date: 2026-04-03
 Data: 18 NQ contracts (H2, H3, H4, H5, H6, M2, M3, M4, M5, U2, U3, U4, U5, Z1, Z2, Z3, Z4, Z5)
 Total: 1143 valid trading days (IB1 High > 0 AND IB2 High > 0)
 IB1: 08:30-09:30 ET, IB2: 09:30-10:30 ET
-Midline: 160-bar rolling mean on 5-min chart
-Slope: (midline at 10:30 - midline at 10:00) / 6 bars
-Slope threshold: +/-0.25 pts/bar (UP/FLAT/DOWN)
+Signal: IB1 break outcome only (no slope, no price vs midline)
 RTH: 09:30-16:00
 
 **Disclaimer:** All percentages reported are observed frequencies from
@@ -54,87 +52,93 @@ guarantee future outcomes.
 
 ---
 
-## 4. Combined Signal: IB1 + Midline Slope -> IB2 First Break
+## 4. Primary Signal: IB1 Outcome -> IB2 First Break Direction
 
-Midline slope = (midline at 10:30 - midline at 10:00) / 6 bars.
-Slope threshold: +/-0.25 pts/bar (UP/FLAT/DOWN).
-All signals known by 10:30 (before IB2 breaks).
+The signal is IB1 break outcome alone. No additional filters are
+needed when IB1 breaks only one side.
 
-### When IB1 breaks ONE side only (highest accuracy)
+| IB1 Outcome | Days | Predicted IB2 Direction | Accuracy | One-Side Holds |
+|-------------|------|------------------------|----------|----------------|
+| HIGH only | 214 | HIGH first | 91.6% | 91.1% |
+| LOW only | 188 | LOW first | 91.0% | 88.3% |
+| BOTH | 699 | near coin flip | 50.4% HIGH / 49.6% LOW | -- |
 
-| Signal | Days | IB2 First Break | Accuracy | One-Side Holds |
-|--------|------|----------------|----------|---------------|
-| IB1 LOW only + DOWN | 125 | LOW first | 95% | 93% |
-| IB1 HIGH only + FLAT | 38 | HIGH first | 92% | 95% |
-| IB1 HIGH only + UP | 154 | HIGH first | 92% | 90% |
-| IB1 HIGH only + DOWN | 22 | HIGH first | 91% | 91% |
-| IB1 LOW only + UP | 16 | LOW first | 88% | 81% |
-| IB1 LOW only + FLAT | 47 | LOW first | 81% | 79% |
+When IB1 breaks only one side, IB2 breaks in that same direction
+first approximately 91% of the time. When IB1 breaks both sides,
+IB2 direction is essentially random (50/50).
 
-### When IB1 breaks BOTH sides
-
-| Signal | Days | IB2 First Break | Accuracy | One-Side Holds |
-|--------|------|----------------|----------|---------------|
-| IB1 BOTH + UP | 240 | HIGH first | 60% | 72% |
-| IB1 BOTH + DOWN | 241 | LOW first | 58% | 72% |
-| IB1 BOTH + FLAT | 218 | LOW first | 51% | 72% |
-
----
-
-## 5. Price vs Midline Analysis
-
-### Standalone Signal
-
-| Price Position at IB2 End | Days | IB2 Same Direction | One-Side Holds |
-|--------------------------|------|-------------------|---------------|
-| ABOVE midline | 559 | 73.5% HIGH first | 78.2% |
-| BELOW midline | 548 | 70.8% LOW first | 79.2% |
-
-### Triple Signal: IB1 + Slope + Price vs Midline -> IB2 First Break
-
-Top triple signals (min 5 days, sorted by accuracy):
-
-| Signal | Days | Direction | Accuracy | One-Side |
-|--------|------|-----------|----------|----------|
-| IB1 LOW only + DOWN + BELOW | 125 | LOW | 95% | 93% |
-| IB1 HIGH only + FLAT + ABOVE | 31 | HIGH | 94% | 97% |
-| IB1 HIGH only + UP + ABOVE | 153 | HIGH | 92% | 91% |
-| IB1 HIGH only + DOWN + BELOW | 18 | HIGH | 89% | 89% |
-| IB1 LOW only + FLAT + BELOW | 41 | LOW | 88% | 83% |
-| IB1 BOTH + DOWN + ABOVE | 24 | HIGH | 88% | 62% |
-| IB1 HIGH only + FLAT + BELOW | 7 | HIGH | 86% | 86% |
-| IB1 LOW only + UP + ABOVE | 12 | LOW | 83% | 83% |
-| IB1 BOTH + UP + BELOW | 17 | LOW | 82% | 59% |
-| IB1 BOTH + FLAT + BELOW | 113 | LOW | 66% | 76% |
-| IB1 BOTH + FLAT + ABOVE | 105 | HIGH | 66% | 68% |
-| IB1 BOTH + UP + ABOVE | 223 | HIGH | 63% | 74% |
-| IB1 BOTH + DOWN + BELOW | 217 | LOW | 63% | 73% |
-| IB1 LOW only + FLAT + ABOVE | 6 | LOW | 33% | 50% |
+**Note on slope filters:** Midline slope was tested in two forms:
+- 10:00-10:30 slope (midline change during IB2): showed apparent
+  signal, but this window falls inside IB2 itself and is not a
+  true leading indicator -- it is computed from the same period
+  being predicted.
+- 08:30-09:30 slope (IB1 period, true leading window): did not
+  add predictive value. When IB1 breaks only one side, accuracy
+  was 88-95% regardless of slope direction. The slope did not
+  meaningfully separate outcomes.
 
 ---
 
-## 6. Per-Contract Consistency (top 2 signals)
+## 5. Tested and Rejected Additions
 
-| Contract | Days | LO+DN Days | LO+DN Acc | HO+UP Days | HO+UP Acc |
-|----------|------|-----------|-----------|-----------|-----------|
-| H2 | 63 | 8 | 100.0% | 4 | 100.0% |
-| H3 | 62 | 6 | 100.0% | 8 | 87.5% |
-| H4 | 63 | 5 | 80.0% | 9 | 88.9% |
-| H5 | 61 | 7 | 100.0% | 9 | 88.9% |
-| H6 | 61 | 9 | 100.0% | 11 | 100.0% |
-| M2 | 64 | 9 | 77.8% | 5 | 100.0% |
-| M3 | 63 | 3 | 100.0% | 10 | 80.0% |
-| M4 | 68 | 7 | 85.7% | 9 | 100.0% |
-| M5 | 63 | 7 | 100.0% | 11 | 90.9% |
-| U2 | 65 | 8 | 100.0% | 10 | 100.0% |
-| U3 | 63 | 7 | 85.7% | 8 | 87.5% |
-| U4 | 62 | 5 | 100.0% | 8 | 87.5% |
-| U5 | 67 | 6 | 100.0% | 11 | 100.0% |
-| Z1 | 65 | 4 | 100.0% | 7 | 85.7% |
-| Z2 | 64 | 9 | 100.0% | 9 | 100.0% |
-| Z3 | 64 | 8 | 100.0% | 9 | 100.0% |
-| Z4 | 65 | 9 | 88.9% | 8 | 75.0% |
-| Z5 | 60 | 8 | 100.0% | 8 | 75.0% |
+The following filters were tested as potential improvements to the
+IB1-only signal. None added meaningful value beyond IB1 outcome alone.
+
+### Midline Slope (10:00-10:30)
+
+- Computed as (midline at 10:30 - midline at 10:00) / 6 bars
+- Threshold: +/-0.25 pts/bar (UP/FLAT/DOWN)
+- Problem: this slope is computed during IB2 itself (09:30-10:30),
+  so it is not available before the period begins. It appeared to
+  improve accuracy (e.g., IB1 LOW only + DOWN slope = 95%) but
+  this was an artifact of using concurrent data as a predictor.
+- When the same slope was measured over the IB1 period (08:30-09:30),
+  it did not separate outcomes -- accuracy ranged 88-95% across all
+  slope buckets with no consistent pattern.
+
+### Price vs Midline at IB2 End
+
+- Whether close at 10:30 was above/below the 160-bar rolling mean
+- Same problem as slope: computed at the end of IB2, not before it
+- Standalone signal (73% directional accuracy) is weaker than IB1
+  outcome alone (91%) and adds no value as a filter
+
+### Triple Signal (IB1 + Slope + Price vs Midline)
+
+- Combined all three inputs
+- Best accuracy cases (95%+) were identical to IB1-only accuracy
+  because the IB1 outcome dominated; slope and price position
+  were either concurrent data or noise
+
+---
+
+## 6. Per-Contract Consistency (IB1 outcome only)
+
+| Contract | Days | HO Days | HO Acc | LO Days | LO Acc |
+|----------|------|---------|--------|---------|--------|
+| Z1 | 65 | 11 | 90.9% | 7 | 100.0% |
+| H2 | 63 | 6 | 100.0% | 10 | 100.0% |
+| M2 | 64 | 6 | 100.0% | 14 | 78.6% |
+| U2 | 65 | 14 | 100.0% | 9 | 88.9% |
+| Z2 | 64 | 13 | 100.0% | 13 | 92.3% |
+| H3 | 62 | 10 | 90.0% | 9 | 88.9% |
+| M3 | 63 | 15 | 80.0% | 6 | 83.3% |
+| U3 | 63 | 11 | 90.9% | 10 | 90.0% |
+| Z3 | 64 | 13 | 100.0% | 10 | 90.0% |
+| H4 | 63 | 13 | 76.9% | 9 | 88.9% |
+| M4 | 68 | 14 | 100.0% | 14 | 85.7% |
+| U4 | 62 | 14 | 85.7% | 7 | 100.0% |
+| Z4 | 65 | 12 | 83.3% | 14 | 85.7% |
+| H5 | 61 | 11 | 90.9% | 14 | 92.9% |
+| M5 | 63 | 17 | 88.2% | 10 | 90.0% |
+| U5 | 67 | 12 | 100.0% | 10 | 100.0% |
+| Z5 | 60 | 9 | 77.8% | 11 | 90.9% |
+| H6 | 61 | 13 | 100.0% | 11 | 100.0% |
+
+HO = IB1 HIGH only, LO = IB1 LOW only.
+Acc = % where IB2 broke in the predicted direction first.
+Signal is consistent across all 18 contracts with no contract
+showing accuracy below 77%.
 
 ---
 
@@ -161,26 +165,17 @@ Top triple signals (min 5 days, sorted by accuracy):
 Calibration: 2021-10-01 to 2025-12-14 (1067 days)
 Holdout: 2025-12-17 to 2026-03-13 (61 days)
 
-### Double Signals (IB1 + Slope)
+### Simplified Signal (IB1 outcome only)
 
-| Signal | Cal Days | Cal Acc | Cal 1-Side | HO Days | HO Acc | HO 1-Side |
-|--------|----------|---------|-----------|---------|--------|-----------|
-| IB1 LOW only + DOWN | 115 | 95% | 92% | 9 | 100% | 100% |
-| IB1 HIGH only + UP | 142 | 91% | 89% | 11 | 100% | 100% |
-| IB1 HIGH only + FLAT | 37 | 92% | 95% | 1 | 100% | 100% |
-| IB1 LOW only + FLAT | 45 | 80% | 78% | 2 | 100% | 100% |
-| IB1 BOTH + UP | 227 | 59% | 71% | 11 | 73% | 100% |
-| IB1 BOTH + DOWN | 226 | 58% | 72% | 9 | 44% | 56% |
-| IB1 BOTH + FLAT | 202 | 50% | 70% | 12 | 58% | 92% |
+| Signal | Cal Days | Cal Acc | HO Days | HO Acc |
+|--------|----------|---------|---------|--------|
+| IB1 HIGH only -> HIGH | 199 | 91.0% | 13 | 100.0% |
+| IB1 LOW only -> LOW | 176 | 90.3% | 11 | 100.0% |
+| IB1 BOTH (best dir) | 655 | 50.5% | 32 | 56.2% |
 
-### Triple Signals (IB1 + Slope + Price vs Midline)
-
-| Signal | Cal Days | Cal Acc | Cal 1-Side | HO Days | HO Acc | HO 1-Side |
-|--------|----------|---------|-----------|---------|--------|-----------|
-| IB1 HIGH only + UP + ABOVE | 141 | 91% | 90% | 11 | 100% | 100% |
-| IB1 LOW only + DOWN + BELOW | 115 | 95% | 92% | 9 | 100% | 100% |
-| IB1 BOTH + FLAT + BELOW | 100 | 64% | 74% | 9 | 78% | 89% |
-| IB1 BOTH + FLAT + ABOVE | 102 | 65% | 67% | 3 | 100% | 100% |
+Holdout confirms calibration: one-side IB1 outcomes predict IB2
+direction at 100% in the 61-day holdout (24 qualifying days).
+IB1 BOTH remains near coin flip in holdout (56%).
 
 ---
 
@@ -197,4 +192,3 @@ Period config: _config/period-config.md
 - Can these signals be integrated with the rangefade rotation strategy?
 - Should IB break direction influence the rangefade's directional bias?
 - Is there value in an IB3 period (10:30-11:30)?
-- Can the midline slope threshold be optimized further?

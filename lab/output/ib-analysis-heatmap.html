@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>IB Analysis — Signal Summary</title>
+<style>
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Consolas, monospace;
+    margin: 40px;
+  }
+  h1, h2, h3 {
+    color: #ccc;
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+  .disclaimer {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 30px;
+  }
+  .note {
+    font-size: 12px;
+    color: #aaa;
+    background: #1e2a40;
+    border-left: 3px solid #4a6;
+    padding: 10px 14px;
+    margin-bottom: 30px;
+    max-width: 700px;
+  }
+  table {
+    border-collapse: collapse;
+    margin-bottom: 40px;
+  }
+  th, td {
+    padding: 10px 16px;
+    text-align: center;
+    border: 1px solid #333;
+    font-size: 13px;
+  }
+  th {
+    background: #16213e;
+    color: #aaa;
+    font-weight: 600;
+  }
+  .row-label {
+    text-align: right;
+    background: #16213e;
+    color: #aaa;
+    font-weight: 600;
+  }
+  .heat-100 { background: #00c853; color: #000; }
+  .heat-95  { background: #2ee66b; color: #000; }
+  .heat-90  { background: #66ff8c; color: #000; }
+  .heat-85  { background: #a5f5b5; color: #000; }
+  .heat-80  { background: #c8f7d0; color: #000; }
+  .heat-75  { background: #e0f5e4; color: #000; }
+  .heat-70  { background: #fff9c4; color: #000; }
+  .heat-65  { background: #ffe082; color: #000; }
+  .heat-60  { background: #ffb74d; color: #000; }
+  .heat-55  { background: #ff8a65; color: #000; }
+  .heat-50  { background: #ef5350; color: #fff; }
+  .heat-low { background: #c62828; color: #fff; }
+  .heat-na  { background: #2a2a3e; color: #aaa; }
+  .days     { font-size: 10px; color: inherit; opacity: 0.7; display: block; }
+  .section  { margin-top: 50px; }
+
+  .legend {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    align-items: center;
+    font-size: 11px;
+  }
+  .legend-box {
+    width: 20px;
+    height: 14px;
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+
+<h1>Initial Balance Analysis — Signal Summary</h1>
+<p class="disclaimer">All percentages are observed frequencies from 1,143 trading days across 18 NQ contracts (2021-2026). Not statistical probabilities.</p>
+<p class="disclaimer"><strong>Definitions:</strong> IB1 = 08:30-09:30 ET. IB2 = 09:30-10:30 ET. HIGH only = IB1 high broken, low held. LOW only = IB1 low broken, high held. BOTH = IB1 both sides broken.</p>
+
+<div class="legend">
+  <span>Accuracy:</span>
+  <span class="legend-box heat-100"></span>95%+
+  <span class="legend-box heat-90"></span>90%+
+  <span class="legend-box heat-85"></span>85%+
+  <span class="legend-box heat-80"></span>80%+
+  <span class="legend-box heat-75"></span>75%+
+  <span class="legend-box heat-70"></span>70%+
+  <span class="legend-box heat-65"></span>65%+
+  <span class="legend-box heat-60"></span>60%+
+  <span class="legend-box heat-55"></span>55%+
+  <span class="legend-box heat-50"></span>50%+
+  <span class="legend-box heat-low"></span>&lt;50%
+</div>
+
+<!-- Primary Signal -->
+<div class="section">
+<h2>IB1 Outcome → IB2 First Break Direction</h2>
+<table>
+  <tr>
+    <th>IB1 Outcome</th>
+    <th>Days</th>
+    <th>Predicted Direction</th>
+    <th>Accuracy</th>
+    <th>One-Side Holds</th>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 HIGH only</td>
+    <td>214</td>
+    <td>HIGH first</td>
+    <td class="heat-90">91.6%</td>
+    <td class="heat-90">91.1%</td>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 LOW only</td>
+    <td>188</td>
+    <td>LOW first</td>
+    <td class="heat-90">91.0%</td>
+    <td class="heat-85">88.3%</td>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 BOTH</td>
+    <td>699</td>
+    <td>coin flip</td>
+    <td class="heat-50">50.4%</td>
+    <td class="heat-na">--</td>
+  </tr>
+</table>
+<p class="disclaimer">When IB1 breaks only one side, IB2 breaks in that same direction first ~91% of the time. When IB1 breaks both sides, IB2 direction is near random.</p>
+</div>
+
+<!-- IB1 -> IB2 Structure -->
+<div class="section">
+<h2>IB1 → IB2 Structural Outcome</h2>
+<table>
+  <tr>
+    <th></th>
+    <th>IB2 Both Broken</th>
+    <th>IB2 One-Side Holds</th>
+    <th>IB2 Neither</th>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 ONE side only (424 days)</td>
+    <td>41 (9.7%)</td>
+    <td class="heat-85">361 (85.1%)</td>
+    <td>22 (5.2%)</td>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 BOTH sides (713 days)</td>
+    <td>195 (27.3%)</td>
+    <td class="heat-70">504 (70.7%)</td>
+    <td>14 (2.0%)</td>
+  </tr>
+</table>
+</div>
+
+<!-- Per-Contract Consistency -->
+<div class="section">
+<h2>Per-Contract Consistency — IB1 Outcome Only</h2>
+<table>
+  <tr>
+    <th>Contract</th>
+    <th>Days</th>
+    <th>IB1 HIGH only<br>Days</th>
+    <th>IB1 HIGH only<br>Accuracy</th>
+    <th>IB1 LOW only<br>Days</th>
+    <th>IB1 LOW only<br>Accuracy</th>
+  </tr>
+  <tr><td>Z1</td><td>65</td><td>11</td><td class="heat-90">90.9%</td><td>7</td><td class="heat-100">100.0%</td></tr>
+  <tr><td>H2</td><td>63</td><td>6</td><td class="heat-100">100.0%</td><td>10</td><td class="heat-100">100.0%</td></tr>
+  <tr><td>M2</td><td>64</td><td>6</td><td class="heat-100">100.0%</td><td>14</td><td class="heat-75">78.6%</td></tr>
+  <tr><td>U2</td><td>65</td><td>14</td><td class="heat-100">100.0%</td><td>9</td><td class="heat-85">88.9%</td></tr>
+  <tr><td>Z2</td><td>64</td><td>13</td><td class="heat-100">100.0%</td><td>13</td><td class="heat-90">92.3%</td></tr>
+  <tr><td>H3</td><td>62</td><td>10</td><td class="heat-90">90.0%</td><td>9</td><td class="heat-85">88.9%</td></tr>
+  <tr><td>M3</td><td>63</td><td>15</td><td class="heat-80">80.0%</td><td>6</td><td class="heat-80">83.3%</td></tr>
+  <tr><td>U3</td><td>63</td><td>11</td><td class="heat-90">90.9%</td><td>10</td><td class="heat-90">90.0%</td></tr>
+  <tr><td>Z3</td><td>64</td><td>13</td><td class="heat-100">100.0%</td><td>10</td><td class="heat-90">90.0%</td></tr>
+  <tr><td>H4</td><td>63</td><td>13</td><td class="heat-75">76.9%</td><td>9</td><td class="heat-85">88.9%</td></tr>
+  <tr><td>M4</td><td>68</td><td>14</td><td class="heat-100">100.0%</td><td>14</td><td class="heat-85">85.7%</td></tr>
+  <tr><td>U4</td><td>62</td><td>14</td><td class="heat-85">85.7%</td><td>7</td><td class="heat-100">100.0%</td></tr>
+  <tr><td>Z4</td><td>65</td><td>12</td><td class="heat-80">83.3%</td><td>14</td><td class="heat-85">85.7%</td></tr>
+  <tr><td>H5</td><td>61</td><td>11</td><td class="heat-90">90.9%</td><td>14</td><td class="heat-90">92.9%</td></tr>
+  <tr><td>M5</td><td>63</td><td>17</td><td class="heat-85">88.2%</td><td>10</td><td class="heat-90">90.0%</td></tr>
+  <tr><td>U5</td><td>67</td><td>12</td><td class="heat-100">100.0%</td><td>10</td><td class="heat-100">100.0%</td></tr>
+  <tr><td>Z5</td><td>60</td><td>9</td><td class="heat-75">77.8%</td><td>11</td><td class="heat-90">90.9%</td></tr>
+  <tr><td>H6</td><td>61</td><td>13</td><td class="heat-100">100.0%</td><td>11</td><td class="heat-100">100.0%</td></tr>
+</table>
+</div>
+
+<!-- Holdout -->
+<div class="section">
+<h2>Holdout Validation (61 days)</h2>
+<p class="disclaimer">Calibration: 2021-10-01 to 2025-12-14 (1,067 days). Holdout: 2025-12-17 to 2026-03-13 (61 days).</p>
+<table>
+  <tr>
+    <th>Signal</th>
+    <th>Cal Days</th>
+    <th>Cal Accuracy</th>
+    <th>HO Days</th>
+    <th>HO Accuracy</th>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 HIGH only → HIGH</td>
+    <td>199</td>
+    <td class="heat-90">91.0%</td>
+    <td>13</td>
+    <td class="heat-100">100.0%</td>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 LOW only → LOW</td>
+    <td>176</td>
+    <td class="heat-90">90.3%</td>
+    <td>11</td>
+    <td class="heat-100">100.0%</td>
+  </tr>
+  <tr>
+    <td class="row-label">IB1 BOTH (best dir)</td>
+    <td>655</td>
+    <td class="heat-50">50.5%</td>
+    <td>32</td>
+    <td class="heat-55">56.2%</td>
+  </tr>
+</table>
+</div>
+
+<!-- Why slope was removed -->
+<div class="section">
+<h2>Note: Why Slope Was Removed</h2>
+<div class="note">
+  <p><strong>Previous versions of this analysis included midline slope (10:00-10:30) as a signal component.</strong></p>
+  <p>The 10:00-10:30 slope is computed during IB2 itself (09:30-10:30). It is not a leading indicator — it uses data from the period being predicted. When the slope was instead measured over IB1 (08:30-09:30), a true leading window, it did not add predictive value: accuracy was 88-95% regardless of slope direction when IB1 broke only one side.</p>
+  <p>Price vs midline at 10:30 had the same problem — it is known only at the end of IB2, not before.</p>
+  <p>The simplified signal (IB1 outcome alone) captures the full predictive content. No additional filters improved it.</p>
+</div>
+</div>
+
+</body>
+</html>
