@@ -1,64 +1,86 @@
 // STUDY VERSION LOG
-// Base: ATEAM_ROTATION_V3_V2803 (martingale rotation strategy)
-// Fork: ATEAM_ROTATION_V3_LP (LucidProp — parameter sweep & prop firm evaluation)
+// Base: ATEAM_ROTATION_V3_FULL
+// Fork: Full study with all validated entry gates + hold mechanic
 //
 // archetype: rotational
-// @study: ATEAM Rotation V3 LP
-// @version: LP-1.1
+// @study: ATEAM Rotation V3 Full
+// @version: FULL-1.0
 // @author: ATEAM
 // @type: trading-system + batch-test
-// @summary: Forked from V2803 for LucidProp project. Adds CSV test mode for
-//           batch simulation over bar data, producing cycle-level P&L output
-//           for parameter sweeps and Monte Carlo analysis.
+// @summary: Complete rotational NQ strategy with stacked entry gates
+//           and d2_avg3 in-trade hold mechanic.
+//
+//   Entry gates (stacked, all must pass):
+//     1. chop < 0.10           (parent study, inter-study ref)
+//     2. dR2 <= -0.40          (Track A, inline linreg lb=3)
+//     3. dSlope <= -2.0        (Track A, inline linreg lb=3)
+//     4. fade_confirm < 0.40   (Track B, prev completed bar)
+//     5. d2_ema9 entry gate    (Track B2, |d2|<=0.5 neutral zone)
+//
+//   In-trade hold (Track B2):
+//     At reversal trigger: if d2_avg3 aligned with direction -> HOLD
+//     Exit on d2_avg3 flip (D2_EXIT), hard stop, or EOD
+//
+//   Frozen config: rotational-NQ-ema-directional-params-frozen.json
+//   Validation: P1+P2 PASS, E[R]=$225, PF=4.04, 84% WR, 13/13 weeks
 //
 // CHANGE LOG
 // ----------
-// [2026-03-25 LP-1.0] Initial fork from V2803
-//   - Copied ATEAM_ROTATION_V3_V2803.cpp verbatim as starting point
-//   - Renamed DLL and study function to ATEAM_ROTATION_V3_LP
-//   - Added this version header and change log
+// [2026-03-30 FULL-1.0] Fork from CHOP-1.0
+//   - Added Inputs 19-27: Track A, B, B2 parameters
+//   - Added Subgraphs 1-8: inline feature computation (R2, Slope, dR2,
+//     dSlope, EMA9, dEMA9, d2EMA9, d2Avg3)
+//   - Track A: dR2/dSlope entry gate (skip when dr2 > -0.40 OR dslope > -2.0)
+//   - Track B: fade_confirm entry gate (skip when fc >= 0.40, uses prev bar)
+//   - Track B2 entry: d2_ema9 three-state gate (block against-trend outside neutral)
+//   - Track B2 hold: d2_avg3 delays reversal when curvature aligned
+//   - D2_EXIT: new exit type when d2_avg3 flips against direction during hold
+//   - All entry gates applied on both SEED and REVERSAL re-entry
+//   - Test mode: extended pass-1 to compute all features per agg bar
+//   - Test mode: extended pass-2 with hold state machine
+//   - Events CSV: added feature value columns for debugging
+//   - Cycles CSV: added hold_count column
+//   - Live mode: inline feature computation via subgraphs in autoloop
+//   - Live mode: FlattenPending=2 for D2_EXIT (no re-enter)
+//   - Renamed DLL and study function to ATEAM_ROTATION_V3_FULL
 //
-// [2026-03-25 LP-1.1] Add RTH gate + CSV test mode
-//   - Input 12: RTH Only toggle (default ON) — restricts live trading to 9:30-15:50 ET
-//   - Input 13: unused/reserved
-//   - Input 14: CSV Test Mode toggle — batch simulation on bar data CSV
-//   - Input 15: CSV Test Path — directory containing calibration bar data CSV
-//   - RTH gate: no new entries outside 9:30:00-15:49:50, forced flatten at 15:49:50
-//   - RTH gate resets watch state at session open (9:30:00) each day
-//   - CSV test mode: loads bar data, runs rotation state machine bar-by-bar,
-//     writes cycle-level CSV (cycles.csv) and event-level CSV (events.csv)
-//   - Cycle CSV includes: watch phase data, entry/exit, depth, P&L, MFE/MAE
-//   - Test mode processes up to 500K bars (sufficient for calibration slice)
-//   - Following V32 Zone Touch pattern: runs once on last bar, allocate/free memory
-//
-// [2026-03-25 LP-1.1 bugfix] Three fixes to test mode output
-//   - avg_entry_price: saved before SimFlatten clears it (was always 0.00)
-//   - pnl_dollars: corrected to pnlTicks * $5/tick (was double-counting via TickSize * 20)
-//   - cycle_id: sequential numbering — incremented in RecordCycle, not StartNewWatch
-//   - Also fixed AddEvent avg entry param at SESSION_RESET, HARD_STOP, REVERSAL, EOD_FLATTEN
+// PRIOR LOG (from CHOP-1.0 -> LP-1.1):
+//   See rotational-NQ-study-chop.cpp for full history
 
 #include "sierrachart.h"
 #include <cstdio>
 #include <cmath>
 #include <cstring>
 
-SCDLLName("ATEAM_ROTATION_V3_LP")
+SCDLLName("ATEAM_ROTATION_V3_FULL")
 
 // =========================================================================
-//  Helper: parse "HH:MM:SS" or "H:MM:SS" from time string to seconds since midnight
+//  Helpers
 // =========================================================================
 static int TimeToSeconds(int Hour, int Minute, int Second)
 {
     return Hour * 3600 + Minute * 60 + Second;
 }
 
-// RTH boundaries in seconds since midnight (ET)
-static const int RTH_OPEN_SEC  = 9 * 3600 + 30 * 60;       // 09:30:00
-static const int RTH_CLOSE_SEC = 15 * 3600 + 49 * 60 + 50;  // 15:49:50
-static const int RTH_NOENTRY_SEC = 15 * 3600 + 49 * 60 + 50; // same — no new entries after this
+static const int RTH_OPEN_SEC  = 9 * 3600 + 30 * 60;
+static const int RTH_CLOSE_SEC = 15 * 3600 + 49 * 60 + 50;
+
+// Linear regression on 3 equally-spaced points (x=0,1,2)
+static void LinReg3(float y0, float y1, float y2, float& outSlope, float& outR2)
+{
+    float meanY = (y0 + y1 + y2) / 3.0f;
+    outSlope = (y2 - y0) / 2.0f;
+    float intercept = meanY - outSlope;
+    float yh0 = intercept;
+    float yh1 = intercept + outSlope;
+    float yh2 = intercept + 2.0f * outSlope;
+    float ssRes = (y0 - yh0) * (y0 - yh0) + (y1 - yh1) * (y1 - yh1) + (y2 - yh2) * (y2 - yh2);
+    float ssTot = (y0 - meanY) * (y0 - meanY) + (y1 - meanY) * (y1 - meanY) + (y2 - meanY) * (y2 - meanY);
+    outR2 = (ssTot > 1e-10f) ? (1.0f - ssRes / ssTot) : 1.0f;
+}
 
 // =========================================================================
-//  Live-mode event CSV logger (unchanged from V2803)
+//  Live-mode event CSV logger
 // =========================================================================
 static void WriteCSV(SCStudyInterfaceRef sc,
     int*        pHeaderWritten,
@@ -70,12 +92,19 @@ static void WriteCSV(SCStudyInterfaceRef sc,
     int         AddQty,
     int         Level,
     double      PnlTicks,
+    double      ChopValue,
     double      StepDist,
     int         MaxLevels,
-    int         MaxContractSize)
+    int         MaxContractSize,
+    float       DR2Value,
+    float       DSlopeValue,
+    float       FadeConfValue,
+    float       D2EMA9Value,
+    float       D2Avg3Value,
+    int         HoldState)
 {
     SCString FilePath;
-    FilePath.Format("%s\\ATEAM_ROTATION_V3_LP_log.csv", sc.DataFilesFolder().GetChars());
+    FilePath.Format("%s\\ATEAM_ROTATION_V3_FULL_log.csv", sc.DataFilesFolder().GetChars());
 
     int NeedHeader = 0;
     if (*pHeaderWritten == 0)
@@ -104,23 +133,26 @@ static void WriteCSV(SCStudyInterfaceRef sc,
     {
         fprintf(f,
             "DateTime,Symbol,Event,Side,Price,AvgEntryPrice,PosQty,AddQty,"
-            "Level,PnlTicks,StepDist,MaxLevels,MaxContractSize\n");
+            "Level,PnlTicks,ChopValue,StepDist,MaxLevels,MaxContractSize,"
+            "DR2,DSlope,FadeConf,D2EMA9,D2Avg3,HoldActive\n");
         *pHeaderWritten = 1;
     }
 
     int Year, Month, Day, Hour, Minute, Second;
-    sc.CurrentSystemDateTime.GetDateTimeYMDHMS(Year, Month, Day,
-                                                Hour, Minute, Second);
+    sc.BaseDateTimeIn[sc.ArraySize - 1].GetDateTimeYMDHMS(Year, Month, Day,
+                                                           Hour, Minute, Second);
 
     fprintf(f,
         "%04d-%02d-%02d %02d:%02d:%02d,%s,%s,%s,"
         "%.2f,%.2f,%d,%d,"
-        "%d,%.1f,%.2f,%d,%d\n",
+        "%d,%.1f,%.4f,%.2f,%d,%d,"
+        "%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
         Year, Month, Day, Hour, Minute, Second,
         sc.GetChartSymbol(sc.ChartNumber).GetChars(),
         Event, Side,
         Price, AvgEntryPrice, PosQty, AddQty,
-        Level, PnlTicks, StepDist, MaxLevels, MaxContractSize);
+        Level, PnlTicks, ChopValue, StepDist, MaxLevels, MaxContractSize,
+        DR2Value, DSlopeValue, FadeConfValue, D2EMA9Value, D2Avg3Value, HoldState);
 
     fclose(f);
 }
@@ -130,10 +162,10 @@ static void WriteCSV(SCStudyInterfaceRef sc,
 // =========================================================================
 struct TestBar
 {
-    char DateTime[32];  // "YYYY-MM-DD HH:MM:SS.ffffff"
+    char  DateTime[32];
     float Open, High, Low, Last;
-    int TimeSec;        // seconds since midnight (parsed from Time column)
-    int DateInt;        // YYYYMMDD as integer for session boundary detection
+    int   TimeSec;
+    int   DateInt;
 };
 
 struct CycleRecord
@@ -146,25 +178,26 @@ struct CycleRecord
     int   watchBars;
     char  seedDT[32];
     char  exitDT[32];
-    char  direction[6];     // "LONG" or "SHORT"
+    char  direction[6];
     float seedPrice;
     float avgEntryPrice;
     float exitPrice;
-    char  exitType[16];     // REVERSAL, HARD_STOP, EOD_FLATTEN
-    int   depth;            // number of adds completed
-    int   maxPosition;      // peak contracts held
+    char  exitType[16];
+    int   depth;
+    int   maxPosition;
     float pnlTicks;
     float pnlDollars;
     int   barsHeld;
-    float mfeTicks;         // max favorable excursion from avg entry
-    float maeTicks;         // max adverse excursion from avg entry
+    float mfeTicks;
+    float maeTicks;
+    int   holdCount;
 };
 
 struct EventRecord
 {
     int   cycleId;
     char  datetime[32];
-    char  event[20];        // SEED, ADD, REVERSAL, HARD_STOP, EOD_FLATTEN, FADE_BLOCKED
+    char  event[20];
     char  side[6];
     float price;
     float avgEntryPrice;
@@ -172,6 +205,12 @@ struct EventRecord
     int   addQty;
     int   level;
     float pnlTicks;
+    float chopVal;
+    float dr2Val;
+    float dslopeVal;
+    float fcVal;
+    float d2Val;
+    float d2a3Val;
 };
 
 // =========================================================================
@@ -180,29 +219,33 @@ struct EventRecord
 static void RunTestMode(SCStudyInterfaceRef sc,
     const char* basePath,
     double StepDist, int InitialQty, int MaxLevels, int MaxContractSize,
-    double HardStop, int MaxFades, float TickSize)
+    double HardStop, int MaxFades, float TickSize,
+    int ChopFilterOn, float ChopThresh, int ChopLookback,
+    int EntrySignalOn, float DR2Thresh, float DSlopeThresh,
+    int FadeConfirmOn, float FadeConfirmThresh,
+    int D2EntryOn, float D2NeutralThresh,
+    int D2HoldOn, int EMAPeriod)
 {
     // ---------- Load bar data ----------
     const int MAX_BARS = 500000;
     TestBar* bars = (TestBar*)sc.AllocateMemory(MAX_BARS * sizeof(TestBar));
     if (!bars)
     {
-        sc.AddMessageToLog("CSV TEST MODE LP: Failed to allocate bar data", 1);
+        sc.AddMessageToLog("CSV TEST: Failed to allocate bar data", 1);
         return;
     }
 
     SCString barPath;
-    barPath.Format("%s\\NQ_calibration_1day.csv", basePath);
+    barPath.Format("%s\\NQ-1tick-calibration-1day.csv", basePath);
     FILE* bf = fopen(barPath.GetChars(), "r");
     if (!bf)
     {
-        // Try without double backslash
-        barPath.Format("%sNQ_calibration_1day.csv", basePath);
+        barPath.Format("%sNQ-1tick-calibration-1day.csv", basePath);
         bf = fopen(barPath.GetChars(), "r");
         if (!bf)
         {
             SCString msg;
-            msg.Format("CSV TEST MODE LP: Cannot open %s", barPath.GetChars());
+            msg.Format("CSV TEST: Cannot open %s", barPath.GetChars());
             sc.AddMessageToLog(msg, 1);
             sc.FreeMemory(bars);
             return;
@@ -215,35 +258,27 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         fgets(line, sizeof(line), bf); // skip header
         while (fgets(line, sizeof(line), bf) && nBars < MAX_BARS)
         {
-            // Parse: Date, Time, Open, High, Low, Last, ...
-            // Format: "2025-9-21, 18:00:00.000000, 24850.00, ..."
             char dateStr[32], timeStr[32];
             float o, h, l, c;
             if (sscanf(line, " %31[^,], %31[^,], %f, %f, %f, %f",
                         dateStr, timeStr, &o, &h, &l, &c) < 6)
                 continue;
 
-            // Parse time to seconds since midnight
             int hr = 0, mn = 0, sec = 0;
             sscanf(timeStr, " %d:%d:%d", &hr, &mn, &sec);
             int timeSec = TimeToSeconds(hr, mn, sec);
 
-            // Parse date to integer YYYYMMDD
             int yr = 0, mo = 0, dy = 0;
             sscanf(dateStr, " %d-%d-%d", &yr, &mo, &dy);
             int dateInt = yr * 10000 + mo * 100 + dy;
 
-            // Build datetime string
             char dtBuf[32];
             snprintf(dtBuf, sizeof(dtBuf), "%04d-%02d-%02d %02d:%02d:%02d",
                      yr, mo, dy, hr, mn, sec);
 
             TestBar& b = bars[nBars];
             strncpy(b.DateTime, dtBuf, 31); b.DateTime[31] = '\0';
-            b.Open = o;
-            b.High = h;
-            b.Low  = l;
-            b.Last = c;
+            b.Open = o; b.High = h; b.Low = l; b.Last = c;
             b.TimeSec = timeSec;
             b.DateInt = dateInt;
             nBars++;
@@ -253,7 +288,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 
     {
         SCString msg;
-        msg.Format("CSV TEST MODE LP: Loaded %d bars", nBars);
+        msg.Format("CSV TEST: Loaded %d bars", nBars);
         sc.AddMessageToLog(msg, 0);
     }
 
@@ -270,7 +305,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
     EventRecord* events = (EventRecord*)sc.AllocateMemory(MAX_EVENTS * sizeof(EventRecord));
     if (!cycles || !events)
     {
-        sc.AddMessageToLog("CSV TEST MODE LP: Failed to allocate output arrays", 1);
+        sc.AddMessageToLog("CSV TEST: Failed to allocate output arrays", 1);
         if (cycles) sc.FreeMemory(cycles);
         if (events) sc.FreeMemory(events);
         sc.FreeMemory(bars);
@@ -281,20 +316,220 @@ static void RunTestMode(SCStudyInterfaceRef sc,
     int nCycles = 0;
     int nEvents = 0;
 
+    // ---------- Pass 1: Aggregate ticks -> bars, compute all features ----------
+    const int AGG_SIZE = 250;
+    const int MAX_AGG_BARS = 5000;
+
+    float* aggCloseArr  = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggRangeArr  = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggHighArr   = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggLowArr    = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggChopArr   = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggR2Arr     = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggSlopeArr  = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggDR2Arr    = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggDSlopeArr = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggEMA9Arr   = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggDEMA9Arr  = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggD2EMA9Arr = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    float* aggD2Avg3Arr = (float*)sc.AllocateMemory(MAX_AGG_BARS * sizeof(float));
+    int*   tickToAgg    = (int*)sc.AllocateMemory(nBars * sizeof(int));
+    float* tickChop     = (float*)sc.AllocateMemory(nBars * sizeof(float));
+    float* tickDR2      = (float*)sc.AllocateMemory(nBars * sizeof(float));
+    float* tickDSlope   = (float*)sc.AllocateMemory(nBars * sizeof(float));
+    float* tickD2EMA9   = (float*)sc.AllocateMemory(nBars * sizeof(float));
+    float* tickD2Avg3   = (float*)sc.AllocateMemory(nBars * sizeof(float));
+
+    if (!aggCloseArr || !aggRangeArr || !aggHighArr || !aggLowArr ||
+        !aggChopArr || !aggR2Arr || !aggSlopeArr || !aggDR2Arr || !aggDSlopeArr ||
+        !aggEMA9Arr || !aggDEMA9Arr || !aggD2EMA9Arr || !aggD2Avg3Arr ||
+        !tickToAgg || !tickChop || !tickDR2 || !tickDSlope || !tickD2EMA9 || !tickD2Avg3)
+    {
+        sc.AddMessageToLog("CSV TEST: Failed to allocate feature arrays", 1);
+        if (aggCloseArr)  sc.FreeMemory(aggCloseArr);
+        if (aggRangeArr)  sc.FreeMemory(aggRangeArr);
+        if (aggHighArr)   sc.FreeMemory(aggHighArr);
+        if (aggLowArr)    sc.FreeMemory(aggLowArr);
+        if (aggChopArr)   sc.FreeMemory(aggChopArr);
+        if (aggR2Arr)     sc.FreeMemory(aggR2Arr);
+        if (aggSlopeArr)  sc.FreeMemory(aggSlopeArr);
+        if (aggDR2Arr)    sc.FreeMemory(aggDR2Arr);
+        if (aggDSlopeArr) sc.FreeMemory(aggDSlopeArr);
+        if (aggEMA9Arr)   sc.FreeMemory(aggEMA9Arr);
+        if (aggDEMA9Arr)  sc.FreeMemory(aggDEMA9Arr);
+        if (aggD2EMA9Arr) sc.FreeMemory(aggD2EMA9Arr);
+        if (aggD2Avg3Arr) sc.FreeMemory(aggD2Avg3Arr);
+        if (tickToAgg)    sc.FreeMemory(tickToAgg);
+        if (tickChop)     sc.FreeMemory(tickChop);
+        if (tickDR2)      sc.FreeMemory(tickDR2);
+        if (tickDSlope)   sc.FreeMemory(tickDSlope);
+        if (tickD2EMA9)   sc.FreeMemory(tickD2EMA9);
+        if (tickD2Avg3)   sc.FreeMemory(tickD2Avg3);
+        sc.FreeMemory(events);
+        sc.FreeMemory(cycles);
+        sc.FreeMemory(bars);
+        return;
+    }
+
+    // --- Aggregate ticks into bars (mirrors Python _aggregate_bars) ---
+    int   aggIdx = 0;
+    int   tickCount = 0;
+    int   prevDate = -1;
+    float curBarHigh = -1e9f, curBarLow = 1e9f, curClose = 0.0f;
+
+    for (int i = 0; i < nBars; i++)
+    {
+        // No date-change reset — SC counts 250-tick bars continuously
+        // from session open (18:00) through next day's close.
+        // Removing this reset aligns bar boundaries with SC's native bars.
+
+        if (tickCount == 0)
+        {
+            curBarHigh = bars[i].High;
+            curBarLow  = bars[i].Low;
+            curClose   = bars[i].Last;
+        }
+        else
+        {
+            if (bars[i].High > curBarHigh) curBarHigh = bars[i].High;
+            if (bars[i].Low  < curBarLow)  curBarLow  = bars[i].Low;
+            curClose = bars[i].Last;
+        }
+        tickToAgg[i] = aggIdx;
+        tickCount++;
+
+        if (tickCount >= AGG_SIZE)
+        {
+            aggCloseArr[aggIdx] = curClose;
+            aggRangeArr[aggIdx] = curBarHigh - curBarLow;
+            aggHighArr[aggIdx]  = curBarHigh;
+            aggLowArr[aggIdx]   = curBarLow;
+            aggIdx++;
+            tickCount = 0;
+            curBarHigh = -1e9f;
+            curBarLow  = 1e9f;
+        }
+    }
+    int nAgg = aggIdx;
+    if (tickCount > 0)
+    {
+        aggCloseArr[aggIdx] = curClose;
+        aggRangeArr[aggIdx] = curBarHigh - curBarLow;
+        aggHighArr[aggIdx]  = curBarHigh;
+        aggLowArr[aggIdx]   = curBarLow;
+        nAgg = aggIdx + 1;
+    }
+
+    // --- Compute choppiness per agg bar ---
+    for (int a = 0; a < nAgg; a++)
+    {
+        if (a < ChopLookback - 1)
+        {
+            aggChopArr[a] = -1.0f;
+            continue;
+        }
+        float netMove = fabsf(aggCloseArr[a] - aggCloseArr[a - ChopLookback + 1]);
+        float sumRange = 0.0f;
+        for (int j = a - ChopLookback + 1; j <= a; j++)
+            sumRange += aggRangeArr[j];
+        aggChopArr[a] = (sumRange > 0.0001f) ? (netMove / sumRange) : 0.0f;
+    }
+
+    // --- Compute R2, Slope, dR2, dSlope per agg bar (linreg lb=3) ---
+    for (int a = 0; a < nAgg; a++)
+    {
+        if (a < 2)
+        {
+            aggR2Arr[a] = 1.0f;
+            aggSlopeArr[a] = 0.0f;
+            aggDR2Arr[a] = 0.0f;
+            aggDSlopeArr[a] = 0.0f;
+            continue;
+        }
+        float slope, r2;
+        LinReg3(aggCloseArr[a - 2], aggCloseArr[a - 1], aggCloseArr[a], slope, r2);
+        aggR2Arr[a] = r2;
+        aggSlopeArr[a] = slope;
+
+        if (a >= 3)
+        {
+            float prevSlope, prevR2;
+            LinReg3(aggCloseArr[a - 3], aggCloseArr[a - 2], aggCloseArr[a - 1], prevSlope, prevR2);
+            aggDR2Arr[a] = r2 - prevR2;
+            aggDSlopeArr[a] = fabsf(slope) - fabsf(prevSlope);
+        }
+        else
+        {
+            aggDR2Arr[a] = 0.0f;
+            aggDSlopeArr[a] = 0.0f;
+        }
+    }
+
+    // --- Compute EMA, dEMA, d2EMA, d2Avg3 per agg bar ---
+    float emaMult = 2.0f / (EMAPeriod + 1);
+    for (int a = 0; a < nAgg; a++)
+    {
+        if (a == 0)
+            aggEMA9Arr[a] = aggCloseArr[a];
+        else
+            aggEMA9Arr[a] = aggCloseArr[a] * emaMult + aggEMA9Arr[a - 1] * (1.0f - emaMult);
+
+        aggDEMA9Arr[a] = (a >= 1) ? aggEMA9Arr[a] - aggEMA9Arr[a - 1] : 0.0f;
+        aggD2EMA9Arr[a] = (a >= 2) ? aggDEMA9Arr[a] - aggDEMA9Arr[a - 1] : 0.0f;
+        aggD2Avg3Arr[a] = (a >= 4)
+            ? (aggD2EMA9Arr[a] + aggD2EMA9Arr[a - 1] + aggD2EMA9Arr[a - 2]) / 3.0f
+            : 0.0f;
+    }
+
+    // --- Map gate features to tick resolution using PREVIOUS completed bar ---
+    // Each tick sees the feature values from the bar BEFORE its own bar.
+    // This matches the live mode (ci-1) behavior: gate decisions use only
+    // completed bar data, no look-ahead within the current bar.
+    for (int i = 0; i < nBars; i++)
+    {
+        int a = tickToAgg[i];
+        int prevA = (a >= 1) ? a - 1 : 0;
+        tickChop[i]    = aggChopArr[prevA];
+        tickDR2[i]     = aggDR2Arr[prevA];
+        tickDSlope[i]  = aggDSlopeArr[prevA];
+        tickD2EMA9[i]  = aggD2EMA9Arr[prevA];
+        tickD2Avg3[i]  = aggD2Avg3Arr[prevA];
+    }
+
+    {
+        SCString msg;
+        msg.Format("CSV TEST: Features computed — %d agg bars, %d ticks", nAgg, nBars);
+        sc.AddMessageToLog(msg, 0);
+    }
+
+    // Free agg-only arrays (keep aggHighArr, aggLowArr, tickToAgg for fade_confirm)
+    sc.FreeMemory(aggCloseArr);
+    sc.FreeMemory(aggRangeArr);
+    sc.FreeMemory(aggChopArr);
+    sc.FreeMemory(aggR2Arr);
+    sc.FreeMemory(aggSlopeArr);
+    sc.FreeMemory(aggDR2Arr);
+    sc.FreeMemory(aggDSlopeArr);
+    sc.FreeMemory(aggEMA9Arr);
+    sc.FreeMemory(aggDEMA9Arr);
+    sc.FreeMemory(aggD2EMA9Arr);
+    sc.FreeMemory(aggD2Avg3Arr);
+
     // ---------- Simulation state ----------
     double anchorPrice    = 0.0;
     double watchPrice     = 0.0;
     double watchHigh      = 0.0;
     double watchLow       = 0.0;
-    int    direction      = 0;    // 1=long, -1=short
+    int    direction      = 0;
     int    level          = 0;
     int    fadeCountLong  = 0;
     int    fadeCountShort = 0;
-    int    posQty         = 0;    // simulated position (signed)
-    double avgEntry       = 0.0;  // simulated average entry price
-    double totalCost      = 0.0;  // total cost basis (qty * price) for avg calc
+    int    posQty         = 0;
+    double avgEntry       = 0.0;
+    double totalCost      = 0.0;
+    int    holdActive     = 0;
+    int    holdCount      = 0;
 
-    // Per-cycle tracking
     int    cycleId        = 0;
     char   watchStartDT[32] = "";
     float  watchStartPrice = 0.0f;
@@ -307,9 +542,9 @@ static void RunTestMode(SCStudyInterfaceRef sc,
     float  cycleMFE        = 0.0f;
     float  cycleMAE        = 0.0f;
     int    prevDateInt     = 0;
-    int    rthActive       = 0;   // whether we're in an RTH session
+    int    rthActive       = 0;
+    float  savedAvgEntry   = 0.0f;
 
-    // Helper lambdas
     auto ResetState = [&]()
     {
         anchorPrice = 0.0;
@@ -318,6 +553,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         watchPrice  = 0.0;
         watchHigh   = 0.0;
         watchLow    = 0.0;
+        holdActive  = 0;
     };
 
     auto FadeBlocked = [&](int dir) -> bool
@@ -349,11 +585,22 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         e.addQty = aq;
         e.level = lv;
         e.pnlTicks = pnl;
+        e.chopVal   = tickChop[barIdx];
+        e.dr2Val    = tickDR2[barIdx];
+        e.dslopeVal = tickDSlope[barIdx];
+        e.fcVal     = 0.0f;
+        e.d2Val     = tickD2EMA9[barIdx];
+        e.d2a3Val   = tickD2Avg3[barIdx];
+    };
+
+    auto SetLastEventFC = [&](float fc)
+    {
+        if (nEvents > 0)
+            events[nEvents - 1].fcVal = fc;
     };
 
     auto SimEntry = [&](int dir, int qty, float price)
     {
-        // Simulate a market fill — update position and average entry
         if (posQty == 0)
         {
             posQty    = dir * qty;
@@ -362,7 +609,6 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         }
         else
         {
-            int absBefore = abs(posQty);
             totalCost += price * qty;
             posQty += dir * qty;
             int absAfter = abs(posQty);
@@ -372,7 +618,6 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 
     auto SimFlatten = [&](float price) -> float
     {
-        // Returns P&L in ticks
         float pnl = 0.0f;
         if (posQty != 0)
         {
@@ -386,9 +631,6 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         totalCost = 0.0;
         return pnl;
     };
-
-    // [LP-1.1 bugfix] Capture avg entry before SimFlatten clears it
-    float savedAvgEntry = 0.0f;
 
     auto RecordCycle = [&](int barIdx, const char* exitType, float pnlTicks)
     {
@@ -404,24 +646,22 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         strncpy(c.exitDT, bars[barIdx].DateTime, 31); c.exitDT[31] = '\0';
         strncpy(c.direction, direction == 1 ? "LONG" : "SHORT", 5); c.direction[5] = '\0';
         c.seedPrice     = bars[cycleStartBar].Last;
-        c.avgEntryPrice = savedAvgEntry;  // [LP-1.1 bugfix] use saved value
+        c.avgEntryPrice = savedAvgEntry;
         c.exitPrice     = bars[barIdx].Last;
         strncpy(c.exitType, exitType, 15); c.exitType[15] = '\0';
         c.depth         = cycleDepth;
         c.maxPosition   = cyclePeakPos;
         c.pnlTicks      = pnlTicks;
-        c.pnlDollars    = pnlTicks * 5.0f;  // [LP-1.1 bugfix] NQ mini: $5 per tick
+        c.pnlDollars    = pnlTicks * 5.0f;
         c.barsHeld      = barIdx - cycleStartBar;
         c.mfeTicks      = cycleMFE;
         c.maeTicks      = cycleMAE;
-        cycleId++;  // [LP-1.1 bugfix] increment after recording, sequential IDs
+        c.holdCount     = holdCount;
+        cycleId++;
     };
 
     auto StartNewWatch = [&](int barIdx)
     {
-        // [LP-1.1 bugfix] Only increment cycleId when starting a NEW watch
-        // after a completed/stopped cycle, not on session resets
-        // cycleId is now incremented in RecordCycle instead
         strncpy(watchStartDT, bars[barIdx].DateTime, 31); watchStartDT[31] = '\0';
         watchStartPrice = bars[barIdx].Last;
         watchStartHigh  = bars[barIdx].Last;
@@ -431,23 +671,81 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         cyclePeakPos    = 0;
         cycleMFE        = 0.0f;
         cycleMAE        = 0.0f;
+        holdActive      = 0;
+        holdCount       = 0;
     };
 
-    // ---------- Main simulation loop ----------
+    // --- Entry gate check: returns 1 if allowed, <0 if blocked ---
+    auto CheckEntryGates = [&](int barIdx, int dir, float price, float& outFC) -> int
+    {
+        if (ChopFilterOn && tickChop[barIdx] >= 0.0f && tickChop[barIdx] >= ChopThresh)
+            return -1;
+
+        if (EntrySignalOn)
+        {
+            if (tickDR2[barIdx] > DR2Thresh || tickDSlope[barIdx] > DSlopeThresh)
+                return -2;
+        }
+
+        outFC = -1.0f;
+        if (FadeConfirmOn)
+        {
+            int prevAgg = tickToAgg[barIdx] - 1;
+            if (prevAgg >= 0)
+            {
+                float prevH = aggHighArr[prevAgg];
+                float prevL = aggLowArr[prevAgg];
+                float range = prevH - prevL;
+                float fc;
+                if (range < 0.0001f)
+                    fc = 0.5f;
+                else if (dir == 1)
+                    fc = (price - prevL) / range;
+                else
+                    fc = (prevH - price) / range;
+                outFC = fc;
+                if (fc >= FadeConfirmThresh)
+                    return -3;
+            }
+        }
+
+        if (D2EntryOn)
+        {
+            float d2 = tickD2EMA9[barIdx];
+            if (d2 > D2NeutralThresh && dir == -1)
+                return -4;
+            if (d2 < -D2NeutralThresh && dir == 1)
+                return -4;
+        }
+
+        return 1;
+    };
+
+    auto BlockEventName = [](int code) -> const char*
+    {
+        switch (code)
+        {
+            case -1: return "CHOP_BLOCKED";
+            case -2: return "DR2_BLOCKED";
+            case -3: return "FADECONF_BLK";
+            case -4: return "D2_BLOCKED";
+            default: return "GATE_BLOCKED";
+        }
+    };
+
+    // ---------- Main simulation loop (pass 2) ----------
     for (int i = 0; i < nBars; i++)
     {
         float price   = bars[i].Last;
         int   timeSec = bars[i].TimeSec;
         int   dateInt = bars[i].DateInt;
 
-        // --- Session boundary detection ---
-        int newSession = (dateInt != prevDateInt && timeSec >= RTH_OPEN_SEC);
+        // --- Session boundary ---
         if (timeSec >= RTH_OPEN_SEC && timeSec <= RTH_CLOSE_SEC)
         {
             if (!rthActive)
             {
                 rthActive = 1;
-                // New RTH session — reset all state, flatten if somehow in a position
                 if (posQty != 0)
                 {
                     savedAvgEntry = (float)avgEntry;
@@ -463,19 +761,19 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         }
         else
         {
-            // Outside RTH — skip
             if (rthActive && timeSec > RTH_CLOSE_SEC)
-                rthActive = 0;  // mark RTH ended
+                rthActive = 0;
             prevDateInt = dateInt;
             continue;
         }
         prevDateInt = dateInt;
 
-        // --- EOD FLATTEN: force close at 15:49:50 ---
+        // --- EOD FLATTEN ---
         if (timeSec >= RTH_CLOSE_SEC)
         {
             if (posQty != 0)
             {
+                holdActive = 0;
                 savedAvgEntry = (float)avgEntry;
                 float pnl = SimFlatten(price);
                 const char* side = direction == 1 ? "LONG" : "SHORT";
@@ -486,14 +784,13 @@ static void RunTestMode(SCStudyInterfaceRef sc,
             }
             else if (watchPrice != 0.0)
             {
-                // Was watching but no trade — don't record cycle, just reset
                 ResetState();
             }
             rthActive = 0;
             continue;
         }
 
-        // --- Track MFE/MAE if in position ---
+        // --- MFE/MAE tracking ---
         if (posQty != 0)
         {
             float excursion;
@@ -503,7 +800,6 @@ static void RunTestMode(SCStudyInterfaceRef sc,
                 excursion = ((float)avgEntry - price) / TickSize;
             if (excursion > cycleMFE) cycleMFE = excursion;
             if (-excursion > cycleMAE) cycleMAE = -excursion;
-            // Also track using High/Low for more accurate MFE/MAE
             float hiExc, loExc;
             if (posQty > 0)
             {
@@ -519,7 +815,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
             if (-loExc > cycleMAE) cycleMAE = -loExc;
         }
 
-        // --- HARD STOP CHECK ---
+        // --- HARD STOP ---
         if (posQty != 0 && HardStop > 0.0)
         {
             double unrealPts = (posQty > 0)
@@ -529,6 +825,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 
             if (unrealTicks >= HardStop)
             {
+                holdActive = 0;
                 savedAvgEntry = (float)avgEntry;
                 float pnl = SimFlatten(price);
                 const char* side = direction == 1 ? "LONG" : "SHORT";
@@ -541,7 +838,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
             }
         }
 
-        // --- WATCHING: flat, looking for seed ---
+        // --- WATCHING ---
         if (posQty == 0 && anchorPrice == 0.0)
         {
             if (watchPrice == 0.0)
@@ -556,7 +853,6 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 
             if (price > watchHigh) watchHigh = price;
             if (price < watchLow)  watchLow  = price;
-            // Track watch extremes for cycle record
             if (price > watchStartHigh) watchStartHigh = price;
             if (price < watchStartLow)  watchStartLow  = price;
 
@@ -571,9 +867,8 @@ static void RunTestMode(SCStudyInterfaceRef sc,
             else if (pullFromLow >= StepDist)
                 seedDir = -1;
             else
-                continue; // not enough pullback
+                continue;
 
-            // Check fade filter
             if (FadeBlocked(seedDir))
             {
                 seedDir = -seedDir;
@@ -584,25 +879,32 @@ static void RunTestMode(SCStudyInterfaceRef sc,
                     continue;
             }
 
-            // SEED entry
+            float fc = -1.0f;
+            int gateResult = CheckEntryGates(i, seedDir, price, fc);
+            if (gateResult < 0)
+                continue;
+
             SimEntry(seedDir, InitialQty, price);
-            direction   = seedDir;
-            level       = 0;
-            anchorPrice = price;
-            watchPrice  = 0.0;
+            direction     = seedDir;
+            level         = 0;
+            anchorPrice   = price;
+            watchPrice    = 0.0;
             cycleStartBar = i;
             cycleDepth    = 0;
             cyclePeakPos  = abs(posQty);
             cycleMFE      = 0.0f;
             cycleMAE      = 0.0f;
+            holdActive    = 0;
+            holdCount     = 0;
             UpdateFadeCount(seedDir);
 
             AddEvent(i, "SEED", seedDir == 1 ? "LONG" : "SHORT",
                      price, price, posQty, InitialQty, 0, 0.0f);
+            if (fc >= 0.0f) SetLastEventFC(fc);
             continue;
         }
 
-        // --- IN POSITION: check reversal or add ---
+        // --- IN POSITION ---
         if (posQty == 0)
         {
             ResetState();
@@ -615,9 +917,27 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         bool inFavor = (direction == 1 ? upMove >= StepDist : downMove >= StepDist);
         bool against = (direction == 1 ? downMove >= StepDist : upMove >= StepDist);
 
-        // REVERSAL: StepDist in favor -> flatten and enter opposite
+        // REVERSAL TRIGGER (takes priority over D2 exit)
         if (inFavor)
         {
+            // d2_avg3 hold check
+            if (D2HoldOn)
+            {
+                float d2avg3 = tickD2Avg3[i];
+                bool aligned = (direction == 1) ? (d2avg3 > 0.0f) : (d2avg3 <= 0.0f);
+                if (aligned)
+                {
+                    anchorPrice = price;
+                    holdActive = 1;
+                    holdCount++;
+                    AddEvent(i, "HOLD", direction == 1 ? "LONG" : "SHORT",
+                             price, (float)avgEntry, posQty, 0, level, 0.0f);
+                    continue;
+                }
+            }
+
+            // Normal REVERSAL
+            holdActive = 0;
             savedAvgEntry = (float)avgEntry;
             float pnl = SimFlatten(price);
             const char* side = direction == 1 ? "LONG" : "SHORT";
@@ -625,8 +945,8 @@ static void RunTestMode(SCStudyInterfaceRef sc,
                      price, savedAvgEntry, 0, 0, level, pnl);
             RecordCycle(i, "REVERSAL", pnl);
 
-            // Immediately enter opposite direction (no pending in sim)
             int newDir = -direction;
+
             if (FadeBlocked(newDir))
             {
                 AddEvent(i, "FADE_BLOCKED", newDir == 1 ? "LONG" : "SHORT",
@@ -636,18 +956,30 @@ static void RunTestMode(SCStudyInterfaceRef sc,
                 continue;
             }
 
+            float fc = -1.0f;
+            int gateResult = CheckEntryGates(i, newDir, price, fc);
+            if (gateResult < 0)
+            {
+                AddEvent(i, BlockEventName(gateResult), newDir == 1 ? "LONG" : "SHORT",
+                         price, 0.0f, 0, 0, 0, 0.0f);
+                ResetState();
+                StartNewWatch(i);
+                continue;
+            }
+
             SimEntry(newDir, InitialQty, price);
-            direction   = newDir;
-            level       = 0;
-            anchorPrice = price;
+            direction     = newDir;
+            level         = 0;
+            anchorPrice   = price;
             cycleStartBar = i;
             cycleDepth    = 0;
             cyclePeakPos  = abs(posQty);
             cycleMFE      = 0.0f;
             cycleMAE      = 0.0f;
+            holdActive    = 0;
+            holdCount     = 0;
             UpdateFadeCount(newDir);
 
-            // Start new watch tracking for the new cycle
             strncpy(watchStartDT, bars[i].DateTime, 31); watchStartDT[31] = '\0';
             watchStartPrice = price;
             watchStartHigh  = price;
@@ -656,10 +988,31 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 
             AddEvent(i, "REVERSAL_ENTRY", newDir == 1 ? "LONG" : "SHORT",
                      price, price, posQty, InitialQty, 0, 0.0f);
+            if (fc >= 0.0f) SetLastEventFC(fc);
             continue;
         }
 
-        // MARTINGALE ADD: StepDist against -> add next doubling level
+        // D2 EXIT (only between reversal triggers, during hold)
+        if (holdActive && D2HoldOn)
+        {
+            float d2avg3 = tickD2Avg3[i];
+            bool flipped = (direction == 1) ? (d2avg3 <= 0.0f) : (d2avg3 > 0.0f);
+            if (flipped)
+            {
+                holdActive = 0;
+                savedAvgEntry = (float)avgEntry;
+                float pnl = SimFlatten(price);
+                const char* side = direction == 1 ? "LONG" : "SHORT";
+                AddEvent(i, "D2_EXIT", side,
+                         price, savedAvgEntry, 0, 0, level, pnl);
+                RecordCycle(i, "D2_EXIT", pnl);
+                ResetState();
+                StartNewWatch(i);
+                continue;
+            }
+        }
+
+        // MARTINGALE ADD
         if (against)
         {
             int useLevel = level;
@@ -673,7 +1026,7 @@ static void RunTestMode(SCStudyInterfaceRef sc,
             {
                 int room = MaxContractSize - absPos;
                 if (room <= 0)
-                    continue; // max size — cannot add
+                    continue;
                 addQty = room;
                 level = 0;
             }
@@ -693,10 +1046,11 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         }
     }
 
-    // ---------- Handle open position at end of data ----------
+    // ---------- End of data ----------
     if (posQty != 0 && nBars > 0)
     {
         int lastIdx = nBars - 1;
+        holdActive = 0;
         savedAvgEntry = (float)avgEntry;
         float pnl = SimFlatten(bars[lastIdx].Last);
         const char* side = direction == 1 ? "LONG" : "SHORT";
@@ -715,19 +1069,19 @@ static void RunTestMode(SCStudyInterfaceRef sc,
             fprintf(f, "cycle_id,watch_start_dt,watch_price,watch_high,watch_low,"
                        "watch_bars,seed_dt,exit_dt,direction,seed_price,"
                        "avg_entry_price,exit_price,exit_type,depth,max_position,"
-                       "pnl_ticks,pnl_dollars,bars_held,mfe_ticks,mae_ticks\n");
-            for (int i = 0; i < nCycles; i++)
+                       "pnl_ticks,pnl_dollars,bars_held,mfe_ticks,mae_ticks,hold_count\n");
+            for (int ci = 0; ci < nCycles; ci++)
             {
-                const CycleRecord& c = cycles[i];
+                const CycleRecord& c = cycles[ci];
                 fprintf(f, "%d,%s,%.2f,%.2f,%.2f,%d,%s,%s,%s,%.2f,%.2f,%.2f,"
-                           "%s,%d,%d,%.2f,%.2f,%d,%.2f,%.2f\n",
+                           "%s,%d,%d,%.2f,%.2f,%d,%.2f,%.2f,%d\n",
                         c.cycleId, c.watchStartDT, c.watchPrice,
                         c.watchHigh, c.watchLow, c.watchBars,
                         c.seedDT, c.exitDT, c.direction,
                         c.seedPrice, c.avgEntryPrice, c.exitPrice,
                         c.exitType, c.depth, c.maxPosition,
                         c.pnlTicks, c.pnlDollars, c.barsHeld,
-                        c.mfeTicks, c.maeTicks);
+                        c.mfeTicks, c.maeTicks, c.holdCount);
             }
             fclose(f);
         }
@@ -741,14 +1095,18 @@ static void RunTestMode(SCStudyInterfaceRef sc,
         if (f)
         {
             fprintf(f, "cycle_id,datetime,event,side,price,avg_entry_price,"
-                       "pos_qty,add_qty,level,pnl_ticks\n");
-            for (int i = 0; i < nEvents; i++)
+                       "pos_qty,add_qty,level,pnl_ticks,"
+                       "chop,dr2,dslope,fade_conf,d2_ema9,d2_avg3\n");
+            for (int ei = 0; ei < nEvents; ei++)
             {
-                const EventRecord& e = events[i];
-                fprintf(f, "%d,%s,%s,%s,%.2f,%.2f,%d,%d,%d,%.2f\n",
+                const EventRecord& e = events[ei];
+                fprintf(f, "%d,%s,%s,%s,%.2f,%.2f,%d,%d,%d,%.2f,"
+                           "%.4f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
                         e.cycleId, e.datetime, e.event, e.side,
                         e.price, e.avgEntryPrice, e.posQty, e.addQty,
-                        e.level, e.pnlTicks);
+                        e.level, e.pnlTicks,
+                        e.chopVal, e.dr2Val, e.dslopeVal, e.fcVal,
+                        e.d2Val, e.d2a3Val);
             }
             fclose(f);
         }
@@ -756,22 +1114,31 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 
     // ---------- Summary ----------
     {
-        int wins = 0, losses = 0;
+        int wins = 0, losses = 0, holds = 0, d2exits = 0;
         float totalPnl = 0.0f;
-        for (int i = 0; i < nCycles; i++)
+        for (int ci = 0; ci < nCycles; ci++)
         {
-            totalPnl += cycles[i].pnlTicks;
-            if (cycles[i].pnlTicks >= 0) wins++;
+            totalPnl += cycles[ci].pnlTicks;
+            if (cycles[ci].pnlTicks >= 0) wins++;
             else losses++;
+            holds += cycles[ci].holdCount;
+            if (strcmp(cycles[ci].exitType, "D2_EXIT") == 0) d2exits++;
         }
         SCString msg;
-        msg.Format("CSV TEST MODE LP: Complete. %d cycles (%d W / %d L), "
-                   "net PnL=%.1f ticks, %d events",
-                   nCycles, wins, losses, totalPnl, nEvents);
+        msg.Format("CSV TEST: %d cycles (%dW/%dL), PnL=%.1ft, %d events, %d holds, %d D2exits",
+                   nCycles, wins, losses, totalPnl, nEvents, holds, d2exits);
         sc.AddMessageToLog(msg, 0);
     }
 
     // ---------- Cleanup ----------
+    sc.FreeMemory(aggHighArr);
+    sc.FreeMemory(aggLowArr);
+    sc.FreeMemory(tickToAgg);
+    sc.FreeMemory(tickChop);
+    sc.FreeMemory(tickDR2);
+    sc.FreeMemory(tickDSlope);
+    sc.FreeMemory(tickD2EMA9);
+    sc.FreeMemory(tickD2Avg3);
     sc.FreeMemory(events);
     sc.FreeMemory(cycles);
     sc.FreeMemory(bars);
@@ -780,15 +1147,24 @@ static void RunTestMode(SCStudyInterfaceRef sc,
 // =========================================================================
 //  Main study function
 // =========================================================================
-SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
+SCSFExport scsf_ATEAM_ROTATION_V3_FULL(SCStudyInterfaceRef sc)
 {
     SCSubgraphRef sg_FilterBG = sc.Subgraph[0];
+    SCSubgraphRef sg_R2       = sc.Subgraph[1];
+    SCSubgraphRef sg_Slope    = sc.Subgraph[2];
+    SCSubgraphRef sg_dR2      = sc.Subgraph[3];
+    SCSubgraphRef sg_dSlope   = sc.Subgraph[4];
+    SCSubgraphRef sg_EMA9     = sc.Subgraph[5];
+    SCSubgraphRef sg_dEMA9    = sc.Subgraph[6];
+    SCSubgraphRef sg_d2EMA9   = sc.Subgraph[7];
+    SCSubgraphRef sg_d2Avg3   = sc.Subgraph[8];
 
     if (sc.SetDefaults)
     {
-        sc.GraphName = "ATEAM Rotation V3 LP";
+        sc.GraphName = "ATEAM Rotation V3 Full";
         sc.AutoLoop = 1;
         sc.UpdateAlways = 1;
+        sc.UpdateStartIndex = 0;  // full recalc — EMA subgraphs are path-dependent
         sc.GraphRegion = 0;
 
         sc.AllowMultipleEntriesInSameDirection = 1;
@@ -803,215 +1179,278 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
         sc.AllowOnlyOneTradePerBar = 0;
         sc.MaintainTradeStatisticsAndTradesData = 1;
 
-        // Background highlight subgraph
-        sg_FilterBG.Name = "Speed Filter BG";
+        sg_FilterBG.Name = "Filter BG";
         sg_FilterBG.DrawStyle = DRAWSTYLE_BACKGROUND;
         sg_FilterBG.PrimaryColor = RGB(80, 80, 0);
         sg_FilterBG.SecondaryColor = RGB(80, 0, 0);
         sg_FilterBG.SecondaryColorUsed = 1;
         sg_FilterBG.DrawZeros = 0;
 
-        sc.Input[0].Name = "Step Dist (pts)";
-        sc.Input[0].SetFloat(2.0f);
+        sg_R2.Name = "R2";         sg_R2.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_Slope.Name = "Slope";   sg_Slope.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_dR2.Name = "dR2";       sg_dR2.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_dSlope.Name = "dSlope"; sg_dSlope.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_EMA9.Name = "EMA9";     sg_EMA9.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_dEMA9.Name = "dEMA9";   sg_dEMA9.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_d2EMA9.Name = "d2EMA9"; sg_d2EMA9.DrawStyle = DRAWSTYLE_HIDDEN;
+        sg_d2Avg3.Name = "d2Avg3"; sg_d2Avg3.DrawStyle = DRAWSTYLE_HIDDEN;
 
+        sc.Input[0].Name = "Step Dist (pts)";
+        sc.Input[0].SetFloat(10.0f);
         sc.Input[1].Name = "Initial Qty";
         sc.Input[1].SetInt(1);
-
-        sc.Input[2].Name = "Max Martingale Levels (1=1, 2=1,2, 3=1,2,4, 4=1,2,4,8)";
-        sc.Input[2].SetInt(4);
-
-        sc.Input[3].Name = "Max Contract Size (resets to Initial after hitting this)";
-        sc.Input[3].SetInt(8);
-
+        sc.Input[2].Name = "Max Martingale Levels";
+        sc.Input[2].SetInt(1);
+        sc.Input[3].Name = "Max Contract Size";
+        sc.Input[3].SetInt(2);
         sc.Input[4].Name = "Enable";
-        sc.Input[4].SetYesNo(1);
-
+        sc.Input[4].SetYesNo(0);
         sc.Input[5].Name = "CSV Log";
-        sc.Input[5].SetYesNo(1);
-
+        sc.Input[5].SetYesNo(0);
         sc.Input[6].Name = "Hard Stop (ticks, 0=disabled)";
-        sc.Input[6].SetFloat(0.0f);
-
+        sc.Input[6].SetFloat(60.0f);
         sc.Input[7].Name = "Max Direction Fades (0=unlimited)";
         sc.Input[7].SetInt(0);
 
         sc.Input[8].Name = "Enable Speed Filter";
         sc.Input[8].SetYesNo(0);
-
         sc.Input[9].Name = "SpeedRead Study Ref";
         sc.Input[9].SetStudySubgraphValues(0, 0);
-
-        sc.Input[10].Name = "Speed Slow Threshold (trades ON below)";
+        sc.Input[10].Name = "Speed Slow Threshold";
         sc.Input[10].SetFloat(30.0f);
-
-        sc.Input[11].Name = "Speed Fast Threshold (stop out above)";
+        sc.Input[11].Name = "Speed Fast Threshold";
         sc.Input[11].SetFloat(70.0f);
 
-        // [LP-1.1] RTH gate
         sc.Input[12].Name = "RTH Only";
         sc.Input[12].SetYesNo(1);
+        // Input 13: reserved
 
-        // Input 13 reserved
-
-        // [LP-1.1] CSV Test Mode
         sc.Input[14].Name = "CSV Test Mode";
         sc.Input[14].SetYesNo(0);
-
         sc.Input[15].Name = "CSV Test Path";
         sc.Input[15].SetString(
-            "C:\\Projects\\pipeline\\stages\\01-data\\data\\bar_data\\tick\\");
+            "C:\\Projects\\futures_pipeline\\data\\");
+
+        sc.Input[16].Name = "Enable Choppiness Filter";
+        sc.Input[16].SetYesNo(1);
+        sc.Input[17].Name = "Choppiness Study Ref";
+        sc.Input[17].SetStudySubgraphValues(0, 0);
+        sc.Input[18].Name = "Choppiness Threshold";
+        sc.Input[18].SetFloat(0.10f);
+
+        sc.Input[19].Name = "Enable Entry Signal Filter (dR2/dSlope)";
+        sc.Input[19].SetYesNo(1);
+        sc.Input[20].Name = "dR2 Threshold (skip when dr2 > this)";
+        sc.Input[20].SetFloat(-0.40f);
+        sc.Input[21].Name = "dSlope Threshold (skip when dslope > this)";
+        sc.Input[21].SetFloat(-2.0f);
+
+        sc.Input[22].Name = "Enable Fade Confirm Filter";
+        sc.Input[22].SetYesNo(1);
+        sc.Input[23].Name = "Fade Confirm Threshold (skip when fc >= this)";
+        sc.Input[23].SetFloat(0.40f);
+
+        sc.Input[24].Name = "Enable EMA Directional Entry Gate";
+        sc.Input[24].SetYesNo(1);
+        sc.Input[25].Name = "d2_ema9 Neutral Threshold";
+        sc.Input[25].SetFloat(0.5f);
+
+        sc.Input[26].Name = "Enable EMA Directional Hold";
+        sc.Input[26].SetYesNo(1);
+        sc.Input[27].Name = "EMA Period";
+        sc.Input[27].SetInt(9);
+        sc.Input[27].SetIntLimits(2, 50);
 
         return;
     }
 
     sc.SendOrdersToTradeService = 0;
 
-    // =====================================================================
-    //  CSV TEST MODE — runs once on last bar, batch simulation, then return
-    // =====================================================================
-    if (sc.Input[14].GetYesNo())
-    {
-        if (sc.Index != sc.ArraySize - 1)
-            return;
-
-        SCString basePath;
-        basePath = sc.Input[15].GetString();
-        // Ensure trailing backslash
-        if (basePath.GetLength() > 0 &&
-            basePath[basePath.GetLength() - 1] != '\\')
-            basePath += "\\";
-
-        const double StepDist        = sc.Input[0].GetFloat();
-        const int    InitialQty      = sc.Input[1].GetInt();
-        const int    MaxLevels       = sc.Input[2].GetInt();
-        const int    MaxContractSize = sc.Input[3].GetInt();
-        const double HardStop        = sc.Input[6].GetFloat();
-        const int    MaxFades        = sc.Input[7].GetInt();
-
-        sc.AddMessageToLog("CSV TEST MODE LP: Starting batch simulation...", 0);
-
-        RunTestMode(sc, basePath.GetChars(),
-                    StepDist, InitialQty, MaxLevels, MaxContractSize,
-                    HardStop, MaxFades, sc.TickSize);
-
-        return;  // test mode done — do not run live logic
-    }
-
-    // =====================================================================
-    //  LIVE TRADING MODE (original V2803 logic + RTH gate)
-    // =====================================================================
-    if (!sc.Input[4].GetYesNo())
-        return;
-
-    const double StepDist        = sc.Input[0].GetFloat();
-    const int    InitialQty      = sc.Input[1].GetInt();
-    const int    MaxLevels       = sc.Input[2].GetInt();
-    const int    MaxContractSize = sc.Input[3].GetInt();
-    const int    CSVEnabled      = sc.Input[5].GetYesNo();
-    const double HardStop        = sc.Input[6].GetFloat();
-    const int    MaxFades        = sc.Input[7].GetInt();
+    const double StepDist          = sc.Input[0].GetFloat();
+    const int    InitialQty        = sc.Input[1].GetInt();
+    const int    MaxLevels         = sc.Input[2].GetInt();
+    const int    MaxContractSize   = sc.Input[3].GetInt();
+    const int    CSVEnabled        = sc.Input[5].GetYesNo();
+    const double HardStop          = sc.Input[6].GetFloat();
+    const int    MaxFades          = sc.Input[7].GetInt();
     const int    SpeedFilterEnabled = sc.Input[8].GetYesNo();
     const float  SpeedSlowThresh   = sc.Input[10].GetFloat();
     const float  SpeedFastThresh   = sc.Input[11].GetFloat();
     const int    RTHOnly           = sc.Input[12].GetYesNo();
+    const int    ChopFilterEnabled = sc.Input[16].GetYesNo();
+    const float  ChopThreshold     = sc.Input[18].GetFloat();
+    const int    EntrySignalEnabled = sc.Input[19].GetYesNo();
+    const float  DR2Threshold      = sc.Input[20].GetFloat();
+    const float  DSlopeThreshold   = sc.Input[21].GetFloat();
+    const int    FadeConfirmEnabled = sc.Input[22].GetYesNo();
+    const float  FadeConfirmThresh = sc.Input[23].GetFloat();
+    const int    D2EntryEnabled    = sc.Input[24].GetYesNo();
+    const float  D2NeutralThresh   = sc.Input[25].GetFloat();
+    const int    D2HoldEnabled     = sc.Input[26].GetYesNo();
+    const int    EMAPeriod         = sc.Input[27].GetInt();
+    const float  EMAMult           = 2.0f / (EMAPeriod + 1);
 
-    // persistent state
-    double& AnchorPrice    = sc.GetPersistentDouble(0);
-    double& WatchPrice     = sc.GetPersistentDouble(1);
-    double& WatchHigh      = sc.GetPersistentDouble(2);
-    double& WatchLow       = sc.GetPersistentDouble(3);
-    int&    Direction      = sc.GetPersistentInt(0);   // 1=long, -1=short
-    int&    Level          = sc.GetPersistentInt(1);   // 0..MaxLevels-1
-    int&    OrderPending   = sc.GetPersistentInt(2);   // 1=waiting for fill
-    int&    FlattenPending = sc.GetPersistentInt(3);   // 1=waiting for flatten
-    int&    CSVHeader      = sc.GetPersistentInt(4);   // CSV header written flag
-    int&    FadeCountLong  = sc.GetPersistentInt(5);   // consecutive long entries
-    int&    FadeCountShort = sc.GetPersistentInt(6);   // consecutive short entries
-    int&    SpeedFilterOff = sc.GetPersistentInt(7);   // 0=trades allowed, 1=disabled
-    int&    RTHFlatSent    = sc.GetPersistentInt(8);   // 1=EOD flatten already sent today
+    int ci = sc.Index;
 
-    // Read SpeedRead study data (only if filter enabled)
+    // =====================================================================
+    //  AUTOLOOP: Compute inline features on every 250-tick bar
+    // =====================================================================
+
+    // Linear regression R2/Slope (lb=3)
+    if (ci >= 2)
+    {
+        float slope, r2;
+        LinReg3(sc.Close[ci - 2], sc.Close[ci - 1], sc.Close[ci], slope, r2);
+        sg_R2[ci] = r2;
+        sg_Slope[ci] = slope;
+    }
+    else
+    {
+        sg_R2[ci] = 1.0f;
+        sg_Slope[ci] = 0.0f;
+    }
+
+    if (ci >= 3)
+    {
+        sg_dR2[ci] = sg_R2[ci] - sg_R2[ci - 1];
+        sg_dSlope[ci] = fabsf(sg_Slope[ci]) - fabsf(sg_Slope[ci - 1]);
+    }
+    else
+    {
+        sg_dR2[ci] = 0.0f;
+        sg_dSlope[ci] = 0.0f;
+    }
+
+    // EMA
+    if (ci == 0)
+        sg_EMA9[ci] = sc.Close[ci];
+    else
+        sg_EMA9[ci] = sc.Close[ci] * EMAMult + sg_EMA9[ci - 1] * (1.0f - EMAMult);
+
+    sg_dEMA9[ci] = (ci >= 1) ? sg_EMA9[ci] - sg_EMA9[ci - 1] : 0.0f;
+    sg_d2EMA9[ci] = (ci >= 2) ? sg_dEMA9[ci] - sg_dEMA9[ci - 1] : 0.0f;
+    sg_d2Avg3[ci] = (ci >= 4)
+        ? (sg_d2EMA9[ci] + sg_d2EMA9[ci - 1] + sg_d2EMA9[ci - 2]) / 3.0f
+        : 0.0f;
+
+    // Chop from external study (read on every bar for visual; gate decision
+    // uses prevBar in live section below)
+    float ChopVal = 0.0f;
+    int   ChopEntryAllowed = 1;
+    if (ChopFilterEnabled)
+    {
+        SCFloatArray ChopData;
+        sc.GetStudyArrayUsingID(sc.Input[17].GetStudyID(), sc.Input[17].GetSubgraphIndex(), ChopData);
+        ChopVal = (ChopData.GetArraySize() > ci) ? ChopData[ci] : 0.0f;
+        ChopEntryAllowed = (ChopVal < ChopThreshold) ? 1 : 0;
+    }
+
+    // Speed filter visual
     float SpeedVal = 0.0f;
     if (SpeedFilterEnabled)
     {
         SCFloatArray SpeedData;
         sc.GetStudyArrayUsingID(sc.Input[9].GetStudyID(), sc.Input[9].GetSubgraphIndex(), SpeedData);
-        SpeedVal = (SpeedData.GetArraySize() > sc.Index) ? SpeedData[sc.Index] : 0.0f;
-
+        SpeedVal = (SpeedData.GetArraySize() > ci) ? SpeedData[ci] : 0.0f;
         if (SpeedVal > 0.0f && SpeedVal <= SpeedSlowThresh)
         {
-            sg_FilterBG[sc.Index] = 1.0f;
-            sg_FilterBG.DataColor[sc.Index] = sg_FilterBG.PrimaryColor;
+            sg_FilterBG[ci] = 1.0f;
+            sg_FilterBG.DataColor[ci] = sg_FilterBG.PrimaryColor;
         }
         else
-        {
-            sg_FilterBG[sc.Index] = 0.0f;
-        }
+            sg_FilterBG[ci] = 0.0f;
     }
     else
+        sg_FilterBG[ci] = 0.0f;
+
+    // =====================================================================
+    //  CSV TEST MODE
+    // =====================================================================
+    if (sc.Input[14].GetYesNo())
     {
-        sg_FilterBG[sc.Index] = 0.0f;
+        if (ci != sc.ArraySize - 1)
+            return;
+
+        SCString basePath;
+        basePath = sc.Input[15].GetString();
+        if (basePath.GetLength() > 0 &&
+            basePath[basePath.GetLength() - 1] != '\\')
+            basePath += "\\";
+
+        sc.AddMessageToLog("CSV TEST: Starting...", 0);
+
+        RunTestMode(sc, basePath.GetChars(),
+                    StepDist, InitialQty, MaxLevels, MaxContractSize,
+                    HardStop, MaxFades, sc.TickSize,
+                    sc.Input[16].GetYesNo(), sc.Input[18].GetFloat(), 3,
+                    sc.Input[19].GetYesNo(), sc.Input[20].GetFloat(), sc.Input[21].GetFloat(),
+                    sc.Input[22].GetYesNo(), sc.Input[23].GetFloat(),
+                    sc.Input[24].GetYesNo(), sc.Input[25].GetFloat(),
+                    sc.Input[26].GetYesNo(), sc.Input[27].GetInt());
+        return;
     }
 
-    // Only run trade logic on last bar
-    if (sc.Index != sc.ArraySize - 1)
+    // =====================================================================
+    //  LIVE TRADING MODE
+    // =====================================================================
+    if (!sc.Input[4].GetYesNo())
         return;
+
+    if (ci != sc.ArraySize - 1)
+        return;
+
+    // Read features from PREVIOUS COMPLETED bar (ci-1), not the current
+    // incomplete bar. The current bar has partial data — EMA derivatives
+    // on partial bars produce noise, not signal. This matches the test mode
+    // where features are computed on completed agg bars.
+    // All gate features use the PREVIOUS COMPLETED bar (ci-1).
+    // The current bar (ci) is incomplete — EMA derivatives on partial
+    // bar data produce noise. Completed-bar values match what
+    // the Python validation computed.
+    int prevBar = (ci >= 1) ? ci - 1 : 0;
+    float dR2Val     = sg_dR2[prevBar];
+    float dSlopeVal  = sg_dSlope[prevBar];
+    float d2Ema9Val  = sg_d2EMA9[prevBar];
+    float d2Avg3Val  = sg_d2Avg3[prevBar];
+
+    // Re-read chop from previous completed bar (overrides autoloop value)
+    if (ChopFilterEnabled)
+    {
+        SCFloatArray ChopData;
+        sc.GetStudyArrayUsingID(sc.Input[17].GetStudyID(), sc.Input[17].GetSubgraphIndex(), ChopData);
+        ChopVal = (ChopData.GetArraySize() > prevBar) ? ChopData[prevBar] : 0.0f;
+        ChopEntryAllowed = (ChopVal < ChopThreshold) ? 1 : 0;
+    }
+
+    double& AnchorPrice    = sc.GetPersistentDouble(0);
+    double& WatchPrice     = sc.GetPersistentDouble(1);
+    double& WatchHigh      = sc.GetPersistentDouble(2);
+    double& WatchLow       = sc.GetPersistentDouble(3);
+    int&    Direction      = sc.GetPersistentInt(0);
+    int&    Level          = sc.GetPersistentInt(1);
+    int&    OrderPending   = sc.GetPersistentInt(2);
+    int&    FlattenPending = sc.GetPersistentInt(3);
+    int&    CSVHeader      = sc.GetPersistentInt(4);
+    int&    FadeCountLong  = sc.GetPersistentInt(5);
+    int&    FadeCountShort = sc.GetPersistentInt(6);
+    int&    SpeedFilterOff = sc.GetPersistentInt(7);
+    int&    RTHFlatSent    = sc.GetPersistentInt(8);
+    int&    GateBlockLogged = sc.GetPersistentInt(9);
+    int&    HoldActive     = sc.GetPersistentInt(10);
 
     s_SCPositionData Pos;
     sc.GetTradePosition(Pos);
     int    PosQty = Pos.PositionQuantity;
-    double Price  = sc.Close[sc.Index];
+    double Price  = sc.Close[ci];
 
-    // --- RTH GATE: get current bar time ---
-    int BarTimeSec = 0;
-    if (RTHOnly)
+    auto LogCSV = [&](const char* evt, const char* side, double price, double avg,
+                      int posQ, int addQ, int lv, double pnl, float fcVal)
     {
-        SCDateTime BarDT = sc.BaseDateTimeIn[sc.Index];
-        int Year, Month, Day, Hour, Minute, Second;
-        BarDT.GetDateTimeYMDHMS(Year, Month, Day, Hour, Minute, Second);
-        BarTimeSec = TimeToSeconds(Hour, Minute, Second);
-
-        // Reset RTHFlatSent at session open
-        if (BarTimeSec >= RTH_OPEN_SEC && BarTimeSec < RTH_OPEN_SEC + 60)
-            RTHFlatSent = 0;
-
-        // EOD FLATTEN: force close at 15:49:50
-        if (BarTimeSec >= RTH_CLOSE_SEC && !RTHFlatSent)
-        {
-            if (PosQty != 0)
-            {
-                sc.AddMessageToTradeServiceLog("*** RTH EOD FLATTEN ***", 1);
-
-                if (CSVEnabled)
-                {
-                    double AvgEntry = Pos.AveragePrice;
-                    double PnlTicks = (PosQty > 0)
-                        ? (Price - AvgEntry) / sc.TickSize
-                        : (AvgEntry - Price) / sc.TickSize;
-                    WriteCSV(sc, &CSVHeader, "EOD_FLATTEN",
-                        Direction == 1 ? "LONG" : "SHORT",
-                        Price, AvgEntry, PosQty, 0, Level, PnlTicks * abs(PosQty),
-                        StepDist, MaxLevels, MaxContractSize);
-                }
-
-                sc.FlattenAndCancelAllOrders();
-                AnchorPrice    = 0.0;
-                Direction      = 0;
-                Level          = 0;
-                OrderPending   = 0;
-                FlattenPending = 0;
-                WatchPrice     = 0.0;
-                WatchHigh      = 0.0;
-                WatchLow       = 0.0;
-            }
-            RTHFlatSent = 1;
-            return;
-        }
-
-        // Outside RTH window — no trading
-        if (BarTimeSec < RTH_OPEN_SEC || BarTimeSec >= RTH_CLOSE_SEC)
-            return;
-    }
+        if (CSVEnabled)
+            WriteCSV(sc, &CSVHeader, evt, side, price, avg, posQ, addQ, lv, pnl,
+                     ChopVal, StepDist, MaxLevels, MaxContractSize,
+                     dR2Val, dSlopeVal, fcVal, d2Ema9Val, d2Avg3Val, HoldActive);
+    };
 
     auto Market = [&](int side, int qty) -> bool
     {
@@ -1039,91 +1478,160 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
 
     auto ResetToWatching = [&]()
     {
-        AnchorPrice    = 0.0;
-        Direction      = 0;
-        Level          = 0;
-        OrderPending   = 0;
-        FlattenPending = 0;
-        WatchPrice     = 0.0;
-        WatchHigh      = 0.0;
-        WatchLow       = 0.0;
+        AnchorPrice     = 0.0;
+        Direction       = 0;
+        Level           = 0;
+        OrderPending    = 0;
+        FlattenPending  = 0;
+        WatchPrice      = 0.0;
+        WatchHigh       = 0.0;
+        WatchLow        = 0.0;
+        GateBlockLogged = 0;
+        HoldActive      = 0;
     };
+
+    // Entry gate check: returns 1 if allowed, <0 if blocked
+    auto LiveCheckGates = [&](int dir, double price, float& fcOut) -> int
+    {
+        if (ChopFilterEnabled && !ChopEntryAllowed)
+            return -1;
+        if (EntrySignalEnabled)
+        {
+            if (dR2Val > DR2Threshold || dSlopeVal > DSlopeThreshold)
+                return -2;
+        }
+        fcOut = -1.0f;
+        if (FadeConfirmEnabled && ci >= 1)
+        {
+            float prevH = sc.High[ci - 1];
+            float prevL = sc.Low[ci - 1];
+            float range = prevH - prevL;
+            float fc;
+            if (range < 0.0001f)
+                fc = 0.5f;
+            else if (dir == 1)
+                fc = ((float)price - prevL) / range;
+            else
+                fc = (prevH - (float)price) / range;
+            fcOut = fc;
+            if (fc >= FadeConfirmThresh)
+                return -3;
+        }
+        if (D2EntryEnabled)
+        {
+            if (d2Ema9Val > D2NeutralThresh && dir == -1)
+                return -4;
+            if (d2Ema9Val < -D2NeutralThresh && dir == 1)
+                return -4;
+        }
+        return 1;
+    };
+
+    // --- RTH GATE ---
+    int BarTimeSec = 0;
+    if (RTHOnly)
+    {
+        SCDateTime BarDT = sc.BaseDateTimeIn[ci];
+        int Year, Month, Day, Hour, Minute, Second;
+        BarDT.GetDateTimeYMDHMS(Year, Month, Day, Hour, Minute, Second);
+        BarTimeSec = TimeToSeconds(Hour, Minute, Second);
+
+        if (BarTimeSec >= RTH_OPEN_SEC && BarTimeSec < RTH_OPEN_SEC + 60)
+            RTHFlatSent = 0;
+
+        if (BarTimeSec >= RTH_CLOSE_SEC && !RTHFlatSent)
+        {
+            if (PosQty != 0)
+            {
+                sc.AddMessageToTradeServiceLog("*** RTH EOD FLATTEN ***", 1);
+                double AvgEntry = Pos.AveragePrice;
+                double PnlTicks = (PosQty > 0)
+                    ? (Price - AvgEntry) / sc.TickSize
+                    : (AvgEntry - Price) / sc.TickSize;
+                LogCSV("EOD_FLATTEN", Direction == 1 ? "LONG" : "SHORT",
+                       Price, AvgEntry, PosQty, 0, Level, PnlTicks * abs(PosQty), -1.0f);
+                sc.FlattenAndCancelAllOrders();
+                ResetToWatching();
+            }
+            RTHFlatSent = 1;
+            return;
+        }
+
+        if (BarTimeSec < RTH_OPEN_SEC || BarTimeSec >= RTH_CLOSE_SEC)
+            return;
+    }
 
     // DEBUG
     {
         SCString msg;
-        msg.Format("Dir:%d Level:%d Pos:%d Anchor:%.2f Price:%.2f Pend:%d Flat:%d FadesL:%d FadesS:%d Speed:%.1f FilterOff:%d",
-                   Direction, Level, PosQty, AnchorPrice, Price, OrderPending, FlattenPending,
-                   FadeCountLong, FadeCountShort, SpeedVal, SpeedFilterOff);
+        msg.Format("Dir:%d Lv:%d Pos:%d Anc:%.2f P:%.2f Pend:%d Flat:%d Hold:%d "
+                   "Chop:%.3f dR2:%.3f dSl:%.3f d2:%.3f d2a3:%.3f",
+                   Direction, Level, PosQty, AnchorPrice, Price,
+                   OrderPending, FlattenPending, HoldActive,
+                   ChopVal, dR2Val, dSlopeVal, d2Ema9Val, d2Avg3Val);
         sc.AddMessageToTradeServiceLog(msg, 0);
     }
 
-    // HARD STOP CHECK
+    // ====================== D2 EXIT during hold =========================
+    if (HoldActive && PosQty != 0 && D2HoldEnabled && FlattenPending == 0)
+    {
+        bool flipped = (Direction == 1) ? (d2Avg3Val <= 0.0f) : (d2Avg3Val > 0.0f);
+        if (flipped)
+        {
+            sc.AddMessageToTradeServiceLog("*** D2 EXIT ***", 1);
+            double AvgEntry = Pos.AveragePrice;
+            double PnlTicks = (Direction == 1)
+                ? (Price - AvgEntry) / sc.TickSize
+                : (AvgEntry - Price) / sc.TickSize;
+            LogCSV("D2_EXIT", Direction == 1 ? "LONG" : "SHORT",
+                   Price, AvgEntry, PosQty, 0, Level, PnlTicks * abs(PosQty), -1.0f);
+            sc.FlattenAndCancelAllOrders();
+            FlattenPending = 2;
+            return;
+        }
+    }
+
+    // ====================== HARD STOP ===================================
     if (PosQty != 0 && HardStop > 0.0 && !FlattenPending)
     {
         double AvgEntry = Pos.AveragePrice;
         double UnrealizedPts = (PosQty > 0)
-            ? (AvgEntry - Price)
-            : (Price - AvgEntry);
+            ? (AvgEntry - Price) : (Price - AvgEntry);
         double UnrealizedTicks = UnrealizedPts / sc.TickSize;
 
         if (UnrealizedTicks >= HardStop)
         {
             SCString msg;
-            msg.Format("*** HARD STOP HIT (%.0f ticks against) - FLATTENING ***", UnrealizedTicks);
+            msg.Format("*** HARD STOP (%.0f ticks) ***", UnrealizedTicks);
             sc.AddMessageToTradeServiceLog(msg, 1);
-
-            if (CSVEnabled)
-            {
-                WriteCSV(sc, &CSVHeader, "HARD_STOP",
-                    Direction == 1 ? "LONG" : "SHORT",
-                    Price, AvgEntry, PosQty, 0, Level, -UnrealizedTicks,
-                    StepDist, MaxLevels, MaxContractSize);
-            }
-
+            LogCSV("HARD_STOP", Direction == 1 ? "LONG" : "SHORT",
+                   Price, AvgEntry, PosQty, 0, Level, -UnrealizedTicks, -1.0f);
             sc.FlattenAndCancelAllOrders();
             ResetToWatching();
             return;
         }
     }
 
-    // SPEED FILTER
+    // ====================== SPEED FILTER ================================
     if (SpeedFilterEnabled)
     {
         if (SpeedFilterOff == 0 && SpeedVal >= SpeedFastThresh)
         {
             SpeedFilterOff = 1;
-            sc.AddMessageToTradeServiceLog("*** SPEED FILTER OFF - FAST TAPE - STOPPING ***", 1);
-
-            if (CSVEnabled)
-                WriteCSV(sc, &CSVHeader, "SPEED_FILTER_OFF", "NONE",
-                    Price, 0.0, PosQty, 0, Level, 0.0,
-                    StepDist, MaxLevels, MaxContractSize);
-
+            sc.AddMessageToTradeServiceLog("*** SPEED OFF ***", 1);
+            LogCSV("SPEED_OFF", "NONE", Price, 0.0, PosQty, 0, Level, 0.0, -1.0f);
             if (PosQty != 0)
-            {
                 sc.FlattenAndCancelAllOrders();
-                ResetToWatching();
-            }
-            else
-            {
-                ResetToWatching();
-            }
+            ResetToWatching();
             return;
         }
-
         if (SpeedFilterOff == 1)
         {
             if (SpeedVal <= SpeedSlowThresh)
             {
                 SpeedFilterOff = 0;
-                sc.AddMessageToTradeServiceLog("*** SPEED FILTER ON - SLOW TAPE - TRADING RESUMED ***", 1);
-
-                if (CSVEnabled)
-                    WriteCSV(sc, &CSVHeader, "SPEED_FILTER_ON", "NONE",
-                        Price, 0.0, 0, 0, 0, 0.0,
-                        StepDist, MaxLevels, MaxContractSize);
-
+                sc.AddMessageToTradeServiceLog("*** SPEED ON ***", 1);
+                LogCSV("SPEED_ON", "NONE", Price, 0.0, 0, 0, 0, 0.0, -1.0f);
                 ResetToWatching();
             }
             else
@@ -1138,11 +1646,18 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
         }
     }
 
-    // Handle flatten pending
+    // ====================== FLATTEN PENDING =============================
     if (FlattenPending)
     {
         if (PosQty != 0)
             return;
+
+        if (FlattenPending == 2)
+        {
+            FlattenPending = 0;
+            ResetToWatching();
+            return;
+        }
 
         FlattenPending = 0;
         int NewDir = -Direction;
@@ -1150,16 +1665,27 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
         if (FadeBlocked(NewDir))
         {
             SCString msg;
-            msg.Format("*** FADE LIMIT REACHED (%s blocked) - GOING TO WATCH ***",
-                       NewDir == 1 ? "LONG" : "SHORT");
+            msg.Format("*** FADE LIMIT (%s blocked) ***", NewDir == 1 ? "LONG" : "SHORT");
             sc.AddMessageToTradeServiceLog(msg, 1);
+            LogCSV("FADE_BLOCKED", NewDir == 1 ? "LONG" : "SHORT",
+                   Price, 0.0, 0, 0, Level, 0.0, -1.0f);
+            ResetToWatching();
+            return;
+        }
 
-            if (CSVEnabled)
-                WriteCSV(sc, &CSVHeader, "FADE_BLOCKED",
-                    NewDir == 1 ? "LONG" : "SHORT",
-                    Price, 0.0, 0, 0, Level, 0.0,
-                    StepDist, MaxLevels, MaxContractSize);
-
+        float fcVal = -1.0f;
+        int gateResult = LiveCheckGates(NewDir, Price, fcVal);
+        if (gateResult < 0)
+        {
+            const char* bn[] = { "", "CHOP_BLOCKED", "DR2_BLOCKED", "FADECONF_BLK", "D2_BLOCKED" };
+            int idx = -gateResult;
+            if (idx > 4) idx = 0;
+            if (!GateBlockLogged)
+            {
+                LogCSV(bn[idx], NewDir == 1 ? "LONG" : "SHORT",
+                       Price, 0.0, 0, 0, Level, 0.0, fcVal);
+                GateBlockLogged = 1;
+            }
             ResetToWatching();
             return;
         }
@@ -1170,27 +1696,22 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
             AnchorPrice  = Price;
             Level        = 0;
             OrderPending = 1;
+            HoldActive   = 0;
             UpdateFadeCount(NewDir);
-            sc.AddMessageToTradeServiceLog("*** REVERSAL ENTRY SENT ***", 1);
-
-            if (CSVEnabled)
-                WriteCSV(sc, &CSVHeader, "REVERSAL_ENTRY",
-                    NewDir == 1 ? "LONG" : "SHORT",
-                    Price, Price, InitialQty, InitialQty, 0, 0.0,
-                    StepDist, MaxLevels, MaxContractSize);
+            sc.AddMessageToTradeServiceLog("*** REVERSAL ENTRY ***", 1);
+            LogCSV("REVERSAL_ENTRY", NewDir == 1 ? "LONG" : "SHORT",
+                   Price, Price, InitialQty, InitialQty, 0, 0.0, fcVal);
         }
         return;
     }
 
-    // Handle order pending
     if (OrderPending)
     {
-        if (PosQty == 0)
-            return;
+        if (PosQty == 0) return;
         OrderPending = 0;
     }
 
-    // SEED
+    // ====================== SEED ========================================
     if (PosQty == 0 && AnchorPrice == 0.0)
     {
         if (WatchPrice == 0.0)
@@ -1198,7 +1719,6 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
             WatchPrice = Price;
             WatchHigh  = Price;
             WatchLow   = Price;
-            sc.AddMessageToTradeServiceLog("WATCHING: recording reference price", 1);
             return;
         }
 
@@ -1220,18 +1740,28 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
 
         if (FadeBlocked(SeedDir))
         {
-            SCString msg;
-            msg.Format("*** FADE LIMIT - %s BLOCKED, TRYING OPPOSITE ***",
-                       SeedDir == 1 ? "LONG" : "SHORT");
-            sc.AddMessageToTradeServiceLog(msg, 1);
-
             SeedDir = -SeedDir;
             bool otherMoved = (SeedDir == 1)
                 ? (pullFromHigh >= StepDist)
                 : (pullFromLow >= StepDist);
-
             if (!otherMoved || FadeBlocked(SeedDir))
                 return;
+        }
+
+        float fcVal = -1.0f;
+        int gateResult = LiveCheckGates(SeedDir, Price, fcVal);
+        if (gateResult < 0)
+        {
+            if (!GateBlockLogged)
+            {
+                const char* bn[] = { "", "CHOP_BLOCKED", "DR2_BLOCKED", "FADECONF_BLK", "D2_BLOCKED" };
+                int idx = -gateResult;
+                if (idx > 4) idx = 0;
+                LogCSV(bn[idx], SeedDir == 1 ? "LONG" : "SHORT",
+                       Price, 0.0, 0, 0, 0, 0.0, fcVal);
+                GateBlockLogged = 1;
+            }
+            return;
         }
 
         if (Market(SeedDir, InitialQty))
@@ -1241,17 +1771,14 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
             AnchorPrice  = Price;
             WatchPrice   = 0.0;
             OrderPending = 1;
+            HoldActive   = 0;
             UpdateFadeCount(SeedDir);
 
-            const char* Side = SeedDir == 1 ? "LONG" : "SHORT";
             SCString msg;
-            msg.Format("SEED: %s base size", Side);
+            msg.Format("SEED: %s", SeedDir == 1 ? "LONG" : "SHORT");
             sc.AddMessageToTradeServiceLog(msg, 1);
-
-            if (CSVEnabled)
-                WriteCSV(sc, &CSVHeader, "SEED", Side,
-                    Price, Price, InitialQty, InitialQty, 0, 0.0,
-                    StepDist, MaxLevels, MaxContractSize);
+            LogCSV("SEED", SeedDir == 1 ? "LONG" : "SHORT",
+                   Price, Price, InitialQty, InitialQty, 0, 0.0, fcVal);
         }
         return;
     }
@@ -1263,7 +1790,6 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
     }
 
     int PosSide = (PosQty > 0 ? 1 : -1);
-
     if (Direction == 0 || Direction != PosSide)
     {
         Direction   = PosSide;
@@ -1276,28 +1802,39 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
     bool inFavor = (Direction == 1 ? upMove >= StepDist : downMove >= StepDist);
     bool against = (Direction == 1 ? downMove >= StepDist : upMove >= StepDist);
 
-    // REVERSAL
+    // ====================== REVERSAL (with hold) ========================
     if (inFavor)
     {
+        if (D2HoldEnabled)
+        {
+            bool aligned = (Direction == 1) ? (d2Avg3Val > 0.0f) : (d2Avg3Val <= 0.0f);
+            if (aligned)
+            {
+                AnchorPrice = Price;
+                HoldActive = 1;
+                sc.AddMessageToTradeServiceLog("*** HOLD ***", 1);
+                LogCSV("HOLD", Direction == 1 ? "LONG" : "SHORT",
+                       Price, Pos.AveragePrice, PosQty, 0, Level, 0.0, -1.0f);
+                return;
+            }
+        }
+
+        HoldActive = 0;
         double AvgEntry = Pos.AveragePrice;
         double PnlTicks = (Direction == 1)
             ? (Price - AvgEntry) / sc.TickSize
             : (AvgEntry - Price) / sc.TickSize;
 
-        sc.AddMessageToTradeServiceLog("*** REVERSAL - FLATTENING ***", 1);
-
-        if (CSVEnabled)
-            WriteCSV(sc, &CSVHeader, "REVERSAL",
-                Direction == 1 ? "LONG" : "SHORT",
-                Price, AvgEntry, PosQty, 0, Level, PnlTicks,
-                StepDist, MaxLevels, MaxContractSize);
+        sc.AddMessageToTradeServiceLog("*** REVERSAL ***", 1);
+        LogCSV("REVERSAL", Direction == 1 ? "LONG" : "SHORT",
+               Price, AvgEntry, PosQty, 0, Level, PnlTicks, -1.0f);
 
         sc.FlattenAndCancelAllOrders();
         FlattenPending = 1;
         return;
     }
 
-    // MARTINGALE ADD
+    // ====================== MARTINGALE ADD ==============================
     if (against)
     {
         int useLevel = Level;
@@ -1312,19 +1849,15 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
             int room = MaxContractSize - absPos;
             if (room <= 0)
             {
-                sc.AddMessageToTradeServiceLog("*** MAX SIZE HIT - CANNOT ADD ***", 1);
+                sc.AddMessageToTradeServiceLog("*** MAX SIZE ***", 1);
                 return;
             }
             addQty = room;
             Level = 0;
-
-            SCString msg2;
-            msg2.Format("*** MAX SIZE CAP - ADDING %d TO FILL TO %d ***", addQty, MaxContractSize);
-            sc.AddMessageToTradeServiceLog(msg2, 1);
         }
 
         SCString msg;
-        msg.Format("*** MARTINGALE ADD qty=%d (Level=%d) ***", addQty, useLevel);
+        msg.Format("*** ADD qty=%d (Lv=%d) ***", addQty, useLevel);
         sc.AddMessageToTradeServiceLog(msg, 1);
 
         if (Market(Direction, addQty))
@@ -1335,13 +1868,10 @@ SCSFExport scsf_ATEAM_ROTATION_V3_LP(SCStudyInterfaceRef sc)
             AnchorPrice  = Price;
             OrderPending = 1;
 
-            if (CSVEnabled)
-                WriteCSV(sc, &CSVHeader, "ADD",
-                    Direction == 1 ? "LONG" : "SHORT",
-                    Price, Pos.AveragePrice,
-                    PosQty + (Direction > 0 ? addQty : -addQty),
-                    addQty, Level, 0.0,
-                    StepDist, MaxLevels, MaxContractSize);
+            LogCSV("ADD", Direction == 1 ? "LONG" : "SHORT",
+                   Price, Pos.AveragePrice,
+                   PosQty + (Direction > 0 ? addQty : -addQty),
+                   addQty, Level, 0.0, -1.0f);
         }
         return;
     }

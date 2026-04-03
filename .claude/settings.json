@@ -10,7 +10,9 @@
       "Read(//e/SierraChart/SierraChartInstance_4/Data/**)"
     ],
     "additionalDirectories": [
-      "C:\\Projects\\pipeline\\shared\\archetypes\\rotational\\acsil"
+      "C:\\Projects\\pipeline\\shared\\archetypes\\rotational\\acsil",
+      "C:\\Projects\\sierrachart\\studies\\workspace",
+      "c:\\Users\\jshin\\.claude\\projects\\c--Projects-futures-pipeline\\memory"
     ]
   }
 }

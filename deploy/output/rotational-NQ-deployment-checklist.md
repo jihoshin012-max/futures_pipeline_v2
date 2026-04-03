@@ -71,12 +71,28 @@
 ## Known deviations
 
 - SC partial-bar timing differs from Python complete-bar computation. Entry prices differ by ~1-3 ticks on individual trades. Accepted — statistical properties validated across cycles.
-- Tracks A, B, and B2 have not been implemented or verified in C++ yet. Current SC study only has chop filter.
+- SC partial-bar timing for dR2/dSlope and d2_ema9: same accepted approach as chop. fade_confirm uses prev completed bar (no partial-bar issue).
+- Hold mechanic amplifies timing differences: a single different hold decision cascades into different trade durations and subsequent entries. Expect larger per-cycle deviations than chop-only config.
+- EMA initialization: C++ uses recursive formula from bar 0 (equivalent to pandas ewm adjust=False). Verify Python reference uses the same initialization.
+
+## C++ implementation (2026-03-30)
+
+- [x] C++ study update: add dR2/dSlope gate (Track A)
+- [x] C++ study update: add fade_confirm gate (Track B)
+- [x] C++ study update: add d2_ema9 entry gate + d2_avg3 hold mechanic (Track B2)
+- [x] Study: `lab/rotational-NQ-study.cpp` (ATEAM_ROTATION_V3_FULL, FULL-1.0)
+- [x] DLL: `ATEAM_ROTATION_V3_FULL` (separate from CHOP variant)
+- [x] Inputs 19-27: Track A (dR2/dSlope), Track B (fade_confirm), Track B2 (d2/hold, EMA period)
+- [x] Subgraphs 1-8: inline feature computation (R2, Slope, dR2, dSlope, EMA9, dEMA9, d2EMA9, d2Avg3)
+- [x] Test mode: extended with all features + hold state machine
+- [x] Live mode: inline feature computation + FlattenPending=2 for D2_EXIT
+- [x] Python calibration reference: `lab/output/rotational-NQ-scale-detection/calibration-full-reference.py`
+- [x] Diff script: `lab/output/rotational-NQ-scale-detection/diff-calibration-full.py`
 
 ## Pending
 
-- [ ] C++ study update: add dR2/dSlope gate (Track A)
-- [ ] C++ study update: add fade_confirm gate (Track B)
-- [ ] C++ study update: add d2_ema9 entry gate + d2_avg3 hold mechanic (Track B2)
-- [ ] Compilation + replay verification of updated study
+- [ ] Compilation: no warnings
+- [ ] Calibration test: run C++ test mode + Python reference on same data, compare
+- [ ] Document calibration deviations (expected: hold mechanic amplifies timing diffs)
+- [ ] Replay verification: entries, exits, holds, D2_EXIT consistent
 - [ ] Create `deployment-ready-rotational-NQ.flag` (human only)
